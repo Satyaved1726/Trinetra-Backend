@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: trinetra-backend
+    runtime: java
+    buildCommand: ./mvnw clean package -DskipTests
+    startCommand: java -jar target/*.jar
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRATION
+        value: "86400000"
+      - key: APP_CORS_ALLOWED_ORIGIN_PATTERNS
+        value: https://*.vercel.app
