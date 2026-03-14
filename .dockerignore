@@ -1,0 +1,15 @@
+target
+.git
+.gitignore
+.vscode
+.idea
+.mvn
+mvnw
+mvnw.cmd
+*.log
+.env
+uploads
+Dockerfile*
+README.md
+render.yaml
+Procfile
