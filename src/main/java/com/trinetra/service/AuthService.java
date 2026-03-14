@@ -6,14 +6,17 @@ import com.trinetra.dto.RegisterRequest;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.InvalidLoginException;
 import com.trinetra.exception.UserNotFoundException;
+import com.trinetra.model.AdminUser;
 import com.trinetra.model.Role;
 import com.trinetra.model.User;
+import com.trinetra.repository.AdminUserRepository;
 import com.trinetra.repository.UserRepository;
 import com.trinetra.security.JwtUtil;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserDetailsService userDetailsService;
@@ -50,15 +54,31 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        String normalizedEmail = request.getEmail().trim().toLowerCase();
+        String rawIdentifier = request.getEmail().trim();
+
+        // Check if this is an admin login (by username in admin_user table)
+        Optional<AdminUser> adminOpt = adminUserRepository.findByUsernameIgnoreCase(rawIdentifier);
+        String authIdentifier = adminOpt.map(AdminUser::getUsername).orElse(rawIdentifier.toLowerCase());
+
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(normalizedEmail, request.getPassword())
+                new UsernamePasswordAuthenticationToken(authIdentifier, request.getPassword())
             );
         } catch (AuthenticationException ex) {
-            throw new InvalidLoginException("Invalid email or password");
+            throw new InvalidLoginException("Invalid credentials");
         }
 
+        if (adminOpt.isPresent()) {
+            AdminUser admin = adminOpt.get();
+            UserDetails userDetails = userDetailsService.loadUserByUsername(admin.getUsername());
+            return AuthResponse.builder()
+                    .jwtToken(jwtUtil.generateToken(userDetails))
+                    .role(Role.ADMIN)
+                    .userId(admin.getId().toString())
+                    .build();
+        }
+
+        String normalizedEmail = rawIdentifier.toLowerCase();
         User user = userRepository.findByEmail(normalizedEmail)
             .orElseThrow(() -> new UserNotFoundException("User not found"));
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());

@@ -1,8 +1,7 @@
 package com.trinetra.config;
 
-import com.trinetra.model.Role;
-import com.trinetra.model.User;
-import com.trinetra.repository.UserRepository;
+import com.trinetra.model.AdminUser;
+import com.trinetra.repository.AdminUserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -15,31 +14,28 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class AdminBootstrapConfig {
 
-    private final UserRepository userRepository;
+    private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Bean
     public CommandLineRunner bootstrapAdmin(
-            @Value("${app.bootstrap-admin.email:}") String adminEmail,
-            @Value("${app.bootstrap-admin.password:}") String adminPassword,
-            @Value("${app.bootstrap-admin.name:TRINETRA Admin}") String adminName
+            @Value("${app.bootstrap-admin.username:${app.bootstrap-admin.email:}}") String adminUsername,
+            @Value("${app.bootstrap-admin.password:}") String adminPassword
     ) {
         return args -> {
-            if (!StringUtils.hasText(adminEmail) || !StringUtils.hasText(adminPassword)) {
+            if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminPassword)) {
                 return;
             }
-            String normalizedEmail = adminEmail.trim().toLowerCase();
-            if (userRepository.existsByEmail(normalizedEmail)) {
+            if (adminUserRepository.existsByUsernameIgnoreCase(adminUsername.trim())) {
                 return;
             }
 
-            User admin = User.builder()
-                    .name(adminName)
-                    .email(normalizedEmail)
+            AdminUser admin = AdminUser.builder()
+                    .username(adminUsername.trim())
                     .password(passwordEncoder.encode(adminPassword))
-                    .role(Role.ADMIN)
+                    .role("ADMIN")
                     .build();
-            userRepository.save(admin);
+            adminUserRepository.save(admin);
         };
     }
 }

@@ -1,7 +1,10 @@
 package com.trinetra.security;
 
+import com.trinetra.model.AdminUser;
 import com.trinetra.model.User;
+import com.trinetra.repository.AdminUserRepository;
 import com.trinetra.repository.UserRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -14,10 +17,23 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final AdminUserRepository adminUserRepository;
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = userRepository.findByEmail(email)
+    public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+        // Check admin_user table by username first
+        Optional<AdminUser> adminOpt = adminUserRepository.findByUsernameIgnoreCase(identifier);
+        if (adminOpt.isPresent()) {
+            AdminUser admin = adminOpt.get();
+            return org.springframework.security.core.userdetails.User.builder()
+                    .username(admin.getUsername())
+                    .password(admin.getPassword())
+                    .authorities(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                    .build();
+        }
+
+        // Fall back to users table by email
+        User user = userRepository.findByEmail(identifier)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         return org.springframework.security.core.userdetails.User.builder()

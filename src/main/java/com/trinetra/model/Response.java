@@ -39,7 +39,7 @@ public class Response {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "admin_id", nullable = false)
-    private User admin;
+    private AdminUser admin;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;

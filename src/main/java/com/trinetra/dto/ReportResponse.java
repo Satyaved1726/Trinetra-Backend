@@ -21,7 +21,7 @@ public class ReportResponse {
     private String trackingId;
     private LocalDateTime createdAt;
     private UUID userId;
-    private List<String> evidenceFiles;
+    private UUID adminId;
     private List<AdminReply> responses;
 
     @Getter
@@ -29,7 +29,7 @@ public class ReportResponse {
     public static class AdminReply {
         private UUID id;
         private UUID adminId;
-        private String adminName;
+        private String adminUsername;
         private String message;
         private LocalDateTime createdAt;
     }

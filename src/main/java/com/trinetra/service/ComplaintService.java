@@ -9,11 +9,12 @@ import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ComplaintNotFoundException;
 import com.trinetra.exception.UserNotFoundException;
 import com.trinetra.model.Complaint;
+import com.trinetra.model.ComplaintCategory;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.model.User;
 import com.trinetra.repository.ComplaintRepository;
 import com.trinetra.repository.UserRepository;
-import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +24,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class ComplaintService {
-
-    private static final String TRACKING_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
@@ -40,8 +38,8 @@ public class ComplaintService {
         Complaint complaint = Complaint.builder()
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
-                .category(request.getCategory())
-                .status(ComplaintStatus.SUBMITTED)
+                .category(request.getCategory().name())
+                .status(ComplaintStatus.SUBMITTED.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
                 .userId(anonymous ? null : user.getId())
@@ -59,8 +57,8 @@ public class ComplaintService {
         Complaint complaint = Complaint.builder()
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
-                .category(request.getCategory())
-                .status(ComplaintStatus.SUBMITTED)
+                .category(request.getCategory().name())
+                .status(ComplaintStatus.SUBMITTED.name())
                 .anonymous(true)
                 .trackingId(generateTrackingId())
                 .userId(null)
@@ -81,8 +79,8 @@ public class ComplaintService {
         return ComplaintTrackingResponse.builder()
                 .trackingId(complaint.getTrackingId())
                 .title(complaint.getTitle())
-                .category(complaint.getCategory())
-                .status(complaint.getStatus())
+                .category(ComplaintCategory.from(complaint.getCategory()))
+                .status(ComplaintStatus.from(complaint.getStatus()))
                 .createdAt(complaint.getCreatedAt())
                 .build();
     }
@@ -106,6 +104,13 @@ public class ComplaintService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public ComplaintResponse getComplaintById(UUID id) {
+        Complaint complaint = complaintRepository.findById(id)
+                .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
+        return toResponse(complaint);
+    }
+
     @Transactional
     public ComplaintResponse updateComplaintStatus(UUID complaintId, ComplaintStatus status) {
         if (status == null) {
@@ -113,18 +118,26 @@ public class ComplaintService {
         }
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
-        complaint.setStatus(status);
+        complaint.setStatus(status.name());
         return toResponse(complaintRepository.save(complaint));
+    }
+
+    @Transactional
+    public void deleteComplaint(UUID id) {
+        if (!complaintRepository.existsById(id)) {
+            throw new ComplaintNotFoundException("Complaint not found");
+        }
+        complaintRepository.deleteById(id);
     }
 
     @Transactional(readOnly = true)
     public AdminStatsResponse getAdminStats() {
         return AdminStatsResponse.builder()
                 .totalComplaints(complaintRepository.count())
-                .pendingComplaints(complaintRepository.countByStatus(ComplaintStatus.SUBMITTED)
-                        + complaintRepository.countByStatus(ComplaintStatus.UNDER_REVIEW))
-                .resolvedComplaints(complaintRepository.countByStatus(ComplaintStatus.RESOLVED))
-                .rejectedComplaints(complaintRepository.countByStatus(ComplaintStatus.REJECTED))
+                .pendingComplaints(complaintRepository.countByStatus(ComplaintStatus.SUBMITTED.name())
+                        + complaintRepository.countByStatus(ComplaintStatus.UNDER_REVIEW.name()))
+                .resolvedComplaints(complaintRepository.countByStatus(ComplaintStatus.RESOLVED.name()))
+                .rejectedComplaints(complaintRepository.countByStatus(ComplaintStatus.REJECTED.name()))
                 .build();
     }
 
@@ -142,31 +155,28 @@ public class ComplaintService {
                 .trackingId(complaint.getTrackingId())
                 .title(complaint.getTitle())
                 .description(complaint.getDescription())
-                .category(complaint.getCategory())
-                .status(complaint.getStatus())
+                .category(ComplaintCategory.from(complaint.getCategory()))
+                .status(ComplaintStatus.from(complaint.getStatus()))
                 .createdAt(complaint.getCreatedAt())
                 .anonymous(complaint.isAnonymous())
+                .userId(complaint.getUserId())
+                .adminId(complaint.getAdmin() != null ? complaint.getAdmin().getId() : null)
                 .build();
     }
 
-    private String normalizeEmail(String email) {
-        if (email == null || email.isBlank()) {
-            throw new UserNotFoundException("Authenticated user email is missing");
+    private String generateTrackingId() {
+        int year = LocalDateTime.now().getYear();
+        String prefix = "TRI-" + year + "-";
+        long count = complaintRepository.countByTrackingIdStartingWith(prefix);
+        String candidate = prefix + String.format("%04d", count + 1);
+        while (complaintRepository.existsByTrackingId(candidate)) {
+            count++;
+            candidate = prefix + String.format("%04d", count + 1);
         }
-        return email.trim().toLowerCase();
+        return candidate;
     }
 
-    private String generateTrackingId() {
-        for (int attempt = 0; attempt < 30; attempt++) {
-            StringBuilder randomSix = new StringBuilder(6);
-            for (int i = 0; i < 6; i++) {
-                randomSix.append(TRACKING_CHARS.charAt(RANDOM.nextInt(TRACKING_CHARS.length())));
-            }
-            String trackingId = "TRN-" + randomSix;
-            if (!complaintRepository.existsByTrackingId(trackingId)) {
-                return trackingId;
-            }
-        }
-        throw new IllegalStateException("Unable to generate a unique complaint tracking ID");
+    private String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }

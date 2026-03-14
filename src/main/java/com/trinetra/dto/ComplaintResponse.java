@@ -19,4 +19,6 @@ public class ComplaintResponse {
     private ComplaintStatus status;
     private LocalDateTime createdAt;
     private boolean anonymous;
+    private UUID userId;
+    private UUID adminId;
 }

@@ -5,11 +5,12 @@ import com.trinetra.dto.ReportResponse;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ResourceNotFoundException;
 import com.trinetra.model.Complaint;
+import com.trinetra.model.ComplaintCategory;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.model.Response;
 import com.trinetra.repository.ComplaintRepository;
 import com.trinetra.repository.ResponseRepository;
-import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class ReportService {
-
-    private static final String TRACKING_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ComplaintRepository complaintRepository;
     private final ResponseRepository responseRepository;
@@ -38,12 +36,11 @@ public class ReportService {
         Complaint complaint = Complaint.builder()
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
-                .category(request.getCategory())
-                .status(ComplaintStatus.SUBMITTED)
+                .category(request.getCategory().name())
+                .status(ComplaintStatus.SUBMITTED.name())
                 .anonymous(anonymous)
-            .trackingId(generateTrackingToken())
+                .trackingId(generateTrackingId())
                 .userId(anonymous ? null : authenticatedUserId)
-                .evidenceFiles(fileStorageService.storeFiles(files))
                 .build();
 
         Complaint savedComplaint = complaintRepository.save(complaint);
@@ -62,34 +59,32 @@ public class ReportService {
                 .id(complaint.getId())
                 .title(complaint.getTitle())
                 .description(complaint.getDescription())
-                .category(complaint.getCategory())
-                .status(complaint.getStatus())
+                .category(ComplaintCategory.from(complaint.getCategory()))
+                .status(ComplaintStatus.from(complaint.getStatus()))
                 .anonymous(complaint.isAnonymous())
                 .trackingId(complaint.getTrackingId())
                 .createdAt(complaint.getCreatedAt())
                 .userId(complaint.getUserId())
-                .evidenceFiles(complaint.getEvidenceFiles())
+                .adminId(complaint.getAdmin() != null ? complaint.getAdmin().getId() : null)
                 .responses(responses.stream().map(response -> ReportResponse.AdminReply.builder()
                         .id(response.getId())
                         .adminId(response.getAdmin().getId())
-                        .adminName(response.getAdmin().getName())
+                        .adminUsername(response.getAdmin().getUsername())
                         .message(response.getMessage())
                         .createdAt(response.getCreatedAt())
                         .build()).toList())
                 .build();
     }
 
-    private String generateTrackingToken() {
-        for (int attempt = 0; attempt < 30; attempt++) {
-            StringBuilder randomSix = new StringBuilder(6);
-            for (int i = 0; i < 6; i++) {
-                randomSix.append(TRACKING_CHARS.charAt(RANDOM.nextInt(TRACKING_CHARS.length())));
-            }
-            String trackingId = "TRN-" + randomSix;
-            if (!complaintRepository.existsByTrackingId(trackingId)) {
-                return trackingId;
-            }
+    private String generateTrackingId() {
+        int year = LocalDateTime.now().getYear();
+        String prefix = "TRI-" + year + "-";
+        long count = complaintRepository.countByTrackingIdStartingWith(prefix);
+        String candidate = prefix + String.format("%04d", count + 1);
+        while (complaintRepository.existsByTrackingId(candidate)) {
+            count++;
+            candidate = prefix + String.format("%04d", count + 1);
         }
-        throw new IllegalStateException("Unable to generate a unique complaint tracking ID");
+        return candidate;
     }
 }

@@ -1,7 +1,6 @@
 package com.trinetra.repository;
 
 import com.trinetra.model.Complaint;
-import com.trinetra.model.ComplaintStatus;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -11,7 +10,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
 
     List<Complaint> findByUserId(UUID userId);
 
-    List<Complaint> findByStatus(ComplaintStatus status);
+    List<Complaint> findByStatus(String status);
 
     List<Complaint> findAllByOrderByCreatedAtDesc();
 
@@ -21,5 +20,7 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
 
     boolean existsByTrackingId(String trackingId);
 
-    long countByStatus(ComplaintStatus status);
+    long countByStatus(String status);
+
+    long countByTrackingIdStartingWith(String prefix);
 }
