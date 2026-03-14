@@ -1,5 +1,6 @@
 package com.trinetra.security;
 
+import jakarta.annotation.PostConstruct;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -12,19 +13,25 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Component
 public class JwtUtil {
 
-    private final Key signingKey;
-    private final long expirationMs;
+    @Value("${jwt.secret}")
+    private String jwtSecret;
 
-    public JwtUtil(
-            @Value("${app.jwt.secret}") String secret,
-            @Value("${app.jwt.expiration-ms}") long expirationMs
-    ) {
-        this.signingKey = buildSigningKey(secret);
-        this.expirationMs = expirationMs;
+    @Value("${app.jwt.expiration-ms}")
+    private long expirationMs;
+
+    private Key signingKey;
+
+    @PostConstruct
+    void initialize() {
+        if (!StringUtils.hasText(jwtSecret)) {
+            throw new IllegalStateException("Missing required environment variable: JWT_SECRET");
+        }
+        this.signingKey = buildSigningKey(jwtSecret);
     }
 
     public String generateToken(UserDetails userDetails) {

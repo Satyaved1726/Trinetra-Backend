@@ -13,9 +13,11 @@ Production-ready Spring Boot backend for the TRINETRA Anonymous Workplace Report
 
 ## Environment Variables
 
-- `DB_URL`
-- `DB_USER`
-- `DB_PASSWORD`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_PROFILES_ACTIVE`
+- `SERVER_PORT` optional for local runs (Render provides `PORT`)
 - `JWT_SECRET`
 - `JWT_EXPIRATION`
 - `APP_CORS_ALLOWED_ORIGIN_PATTERNS` optional, default allows localhost and `https://*.vercel.app`
@@ -26,9 +28,10 @@ Production-ready Spring Boot backend for the TRINETRA Anonymous Workplace Report
 
 ## Deployment Required Variables
 
-- `DB_URL`
-- `DB_USER`
-- `DB_PASSWORD`
+- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_USERNAME`
+- `SPRING_DATASOURCE_PASSWORD`
+- `SPRING_PROFILES_ACTIVE`
 - `JWT_SECRET`
 - `JWT_EXPIRATION`
 

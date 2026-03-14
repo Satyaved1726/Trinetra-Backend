@@ -5,15 +5,17 @@ services:
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -jar target/*.jar
     envVars:
-      - key: DB_URL
+      - key: SPRING_DATASOURCE_URL
         sync: false
-      - key: DB_USER
+      - key: SPRING_DATASOURCE_USERNAME
         sync: false
-      - key: DB_PASSWORD
+      - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: JWT_SECRET
         sync: false
       - key: JWT_EXPIRATION
         value: "86400000"
+      - key: SPRING_PROFILES_ACTIVE
+        value: production
       - key: APP_CORS_ALLOWED_ORIGIN_PATTERNS
         value: https://*.vercel.app
