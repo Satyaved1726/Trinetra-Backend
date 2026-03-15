@@ -1,6 +1,7 @@
 package com.trinetra.dto;
 
 import com.trinetra.model.ComplaintCategory;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -23,5 +24,6 @@ public class ComplaintRequest {
     private ComplaintCategory category;
 
     @NotNull(message = "Anonymous flag is required")
+    @JsonAlias({"isAnonymous"})
     private Boolean anonymous;
 }

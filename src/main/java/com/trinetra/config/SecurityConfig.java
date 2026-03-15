@@ -47,6 +47,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/complaints", "/api/complaints/anonymous", "/api/complaints/upload").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/complaints/submit", "/api/complaints/track").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/complaints/track/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
                     .requestMatchers("/api/super-admin/**", "/api/superadmin/**").hasRole("SUPER_ADMIN")

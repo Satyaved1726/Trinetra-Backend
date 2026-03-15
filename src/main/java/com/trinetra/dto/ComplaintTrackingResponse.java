@@ -13,7 +13,9 @@ public class ComplaintTrackingResponse {
     private String trackingId;
     private String evidenceUrl;
     private String title;
+    private String description;
     private ComplaintCategory category;
     private ComplaintStatus status;
+    private boolean anonymous;
     private LocalDateTime createdAt;
 }

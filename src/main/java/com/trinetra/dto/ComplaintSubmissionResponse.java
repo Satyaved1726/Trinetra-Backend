@@ -9,4 +9,5 @@ public class ComplaintSubmissionResponse {
 
     private String message;
     private String trackingId;
+    private String anonymousToken;
 }

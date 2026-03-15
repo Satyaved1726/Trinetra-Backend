@@ -4,6 +4,7 @@ import com.trinetra.dto.ComplaintRequest;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
+import com.trinetra.dto.TrackComplaintRequest;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.ComplaintService;
@@ -72,12 +73,14 @@ public class ComplaintController {
 
     // POST /api/complaints/submit — authenticated employee submit (legacy)
     @PostMapping("/submit")
-    @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<ComplaintSubmissionResponse> submitComplaintLegacy(
             @Valid @RequestBody ComplaintRequest request,
             Principal principal
     ) {
-        ComplaintSubmissionResponse response = complaintService.submitComplaint(request, principal.getName());
+        ComplaintSubmissionResponse response = complaintService.submitComplaint(
+            request,
+            principal != null ? principal.getName() : null
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -145,6 +148,12 @@ public class ComplaintController {
     @GetMapping("/track/{trackingId}")
     public ResponseEntity<ComplaintTrackingResponse> trackComplaint(@PathVariable String trackingId) {
         return ResponseEntity.ok(complaintService.trackComplaint(trackingId));
+    }
+
+    // POST /api/complaints/track — anonymous token based tracking
+    @PostMapping("/track")
+    public ResponseEntity<ComplaintTrackingResponse> trackComplaint(@Valid @RequestBody TrackComplaintRequest request) {
+        return ResponseEntity.ok(complaintService.trackComplaint(request.getTrackingId(), request.getAnonymousToken()));
     }
 
     // GET /api/complaints/my — employee's own complaints

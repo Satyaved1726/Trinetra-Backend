@@ -8,6 +8,7 @@ import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ComplaintNotFoundException;
+import com.trinetra.exception.UnauthorizedException;
 import com.trinetra.exception.UserNotFoundException;
 import com.trinetra.model.Complaint;
 import com.trinetra.model.ComplaintCategory;
@@ -38,10 +39,20 @@ public class ComplaintService {
 
     @Transactional
     public ComplaintSubmissionResponse submitComplaint(ComplaintRequest request, String userEmail) {
-        User user = userRepository.findByEmail(normalizeEmail(userEmail))
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
         boolean anonymous = Boolean.TRUE.equals(request.getAnonymous());
+        UUID submittedByUserId = null;
+        String anonymousToken = null;
+
+        if (anonymous) {
+            anonymousToken = UUID.randomUUID().toString();
+        } else {
+            if (userEmail == null || userEmail.isBlank()) {
+            throw new UnauthorizedException("Authentication required for non-anonymous complaint submission");
+            }
+            User user = userRepository.findByEmail(normalizeEmail(userEmail))
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+            submittedByUserId = user.getId();
+        }
 
         Complaint complaint = Complaint.builder()
                 .title(request.getTitle().trim())
@@ -50,35 +61,22 @@ public class ComplaintService {
                 .status(ComplaintStatus.PENDING.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
-                .userId(anonymous ? null : user.getId())
-                .createdBy(anonymous ? null : user.getId())
+            .userId(submittedByUserId)
+            .anonymousToken(anonymousToken)
                 .build();
 
         Complaint saved = complaintRepository.save(complaint);
         return ComplaintSubmissionResponse.builder()
-                .message("Complaint submitted successfully")
+            .message("Complaint submitted")
                 .trackingId(saved.getTrackingId())
+            .anonymousToken(saved.getAnonymousToken())
                 .build();
     }
 
     @Transactional
     public ComplaintSubmissionResponse submitAnonymousComplaint(ComplaintRequest request) {
-        Complaint complaint = Complaint.builder()
-                .title(request.getTitle().trim())
-                .description(request.getDescription().trim())
-                .category(request.getCategory().name())
-                .status(ComplaintStatus.PENDING.name())
-                .anonymous(true)
-                .trackingId(generateTrackingId())
-                .userId(null)
-                .createdBy(null)
-                .build();
-
-        Complaint saved = complaintRepository.save(complaint);
-        return ComplaintSubmissionResponse.builder()
-                .message("Complaint submitted successfully")
-                .trackingId(saved.getTrackingId())
-                .build();
+        request.setAnonymous(true);
+        return submitComplaint(request, null);
     }
 
     @Transactional
@@ -121,8 +119,8 @@ public class ComplaintService {
                 .status(ComplaintStatus.PENDING.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
-                .userId(anonymous ? null : userId)
-                .createdBy(anonymous ? null : userId)
+            .userId(anonymous ? null : userId)
+            .anonymousToken(anonymous ? UUID.randomUUID().toString() : null)
                 .build();
 
         if (evidence != null && !evidence.isEmpty()) {
@@ -142,6 +140,7 @@ public class ComplaintService {
 
         return Map.of(
                 "trackingId", complaint.getTrackingId(),
+            "anonymousToken", complaint.getAnonymousToken() == null ? "" : complaint.getAnonymousToken(),
                 "message", "Complaint submitted successfully"
         );
     }
@@ -179,12 +178,41 @@ public class ComplaintService {
         Complaint complaint = complaintRepository.findByTrackingId(trackingId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
+        if (Boolean.TRUE.equals(complaint.getAnonymous())) {
+            throw new UnauthorizedException("Anonymous token is required for this complaint");
+        }
+
+        return buildTrackingResponse(complaint);
+    }
+
+    @Transactional(readOnly = true)
+    public ComplaintTrackingResponse trackComplaint(String trackingId, String anonymousToken) {
+        Complaint complaint = complaintRepository.findByTrackingId(trackingId)
+                .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
+
+        if (!Boolean.TRUE.equals(complaint.getAnonymous())) {
+            return buildTrackingResponse(complaint);
+        }
+
+        if (anonymousToken == null || anonymousToken.isBlank()) {
+            throw new UnauthorizedException("anonymousToken is required for anonymous complaint tracking");
+        }
+
+        Complaint verified = complaintRepository.findByTrackingIdAndAnonymousToken(trackingId, anonymousToken)
+                .orElseThrow(() -> new UnauthorizedException("Invalid tracking credentials"));
+
+        return buildTrackingResponse(verified);
+    }
+
+    private ComplaintTrackingResponse buildTrackingResponse(Complaint complaint) {
         return ComplaintTrackingResponse.builder()
                 .trackingId(complaint.getTrackingId())
                 .evidenceUrl(complaint.getEvidenceUrl())
                 .title(complaint.getTitle())
+                .description(complaint.getDescription())
                 .category(ComplaintCategory.from(complaint.getCategory()))
                 .status(ComplaintStatus.from(complaint.getStatus()))
+                .anonymous(Boolean.TRUE.equals(complaint.getAnonymous()))
                 .createdAt(complaint.getCreatedAt())
                 .build();
     }
@@ -290,9 +318,9 @@ public class ComplaintService {
                 .category(ComplaintCategory.from(complaint.getCategory()))
                 .status(ComplaintStatus.from(complaint.getStatus()))
                 .createdAt(complaint.getCreatedAt())
-                .anonymous(complaint.isAnonymous())
+                .anonymous(Boolean.TRUE.equals(complaint.getAnonymous()))
                 .userId(complaint.getUserId())
-                .createdBy(complaint.getCreatedBy())
+                .createdBy(complaint.getUserId())
                 .adminId(complaint.getAdmin() != null ? complaint.getAdmin().getId() : null)
                 .build();
     }

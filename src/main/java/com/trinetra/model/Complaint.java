@@ -33,7 +33,7 @@ public class Complaint {
     @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(name = "user_id")
+    @Column(name = "submitted_by_user_id")
     private UUID userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -55,17 +55,17 @@ public class Complaint {
     @Column(name = "tracking_id", nullable = false, unique = true, length = 25)
     private String trackingId;
 
+    @Column(name = "anonymous_token", length = 80)
+    private String anonymousToken;
+
     @Column(name = "evidence_url")
     private String evidenceUrl;
-
-    @Column(name = "created_by")
-    private UUID createdBy;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
-    private boolean anonymous;
+    @Column(name = "is_anonymous", nullable = false)
+    private Boolean anonymous;
 
     @PrePersist
     void onCreate() {
@@ -74,6 +74,12 @@ public class Complaint {
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (trackingId == null || trackingId.isBlank()) {
+            trackingId = "CMP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+        if (anonymous == null) {
+            anonymous = false;
         }
     }
 }

@@ -18,6 +18,8 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
 
     Optional<Complaint> findByTrackingId(String trackingId);
 
+    Optional<Complaint> findByTrackingIdAndAnonymousToken(String trackingId, String anonymousToken);
+
     boolean existsByTrackingId(String trackingId);
 
     long countByStatus(String status);

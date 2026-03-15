@@ -37,11 +37,10 @@ public class ReportService {
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
                 .category(request.getCategory().name())
-            .status(ComplaintStatus.PENDING.name())
+                .status(ComplaintStatus.PENDING.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
                 .userId(anonymous ? null : authenticatedUserId)
-            .createdBy(anonymous ? null : authenticatedUserId)
                 .build();
 
         Complaint savedComplaint = complaintRepository.save(complaint);
@@ -62,7 +61,7 @@ public class ReportService {
                 .description(complaint.getDescription())
                 .category(ComplaintCategory.from(complaint.getCategory()))
                 .status(ComplaintStatus.from(complaint.getStatus()))
-                .anonymous(complaint.isAnonymous())
+                .anonymous(Boolean.TRUE.equals(complaint.getAnonymous()))
                 .trackingId(complaint.getTrackingId())
                 .createdAt(complaint.getCreatedAt())
                 .userId(complaint.getUserId())
