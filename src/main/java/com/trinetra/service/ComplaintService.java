@@ -39,7 +39,8 @@ public class ComplaintService {
 
     @Transactional
     public ComplaintSubmissionResponse submitComplaint(ComplaintRequest request, String userEmail) {
-        boolean anonymous = Boolean.TRUE.equals(request.getAnonymous());
+        boolean anonymous = Boolean.TRUE.equals(request.getIsAnonymous());
+        ComplaintCategory complaintCategory = parseCategory(request.getCategory());
         UUID submittedByUserId = null;
         String anonymousToken = null;
 
@@ -57,7 +58,7 @@ public class ComplaintService {
         Complaint complaint = Complaint.builder()
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
-                .category(request.getCategory().name())
+            .category(complaintCategory.name())
                 .status(ComplaintStatus.PENDING.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
@@ -75,7 +76,7 @@ public class ComplaintService {
 
     @Transactional
     public ComplaintSubmissionResponse submitAnonymousComplaint(ComplaintRequest request) {
-        request.setAnonymous(true);
+        request.setIsAnonymous(true);
         return submitComplaint(request, null);
     }
 
@@ -84,7 +85,8 @@ public class ComplaintService {
             ComplaintRequest request,
             List<MultipartFile> files,
             String userEmail) {
-        boolean anonymous = Boolean.TRUE.equals(request.getAnonymous());
+        boolean anonymous = Boolean.TRUE.equals(request.getIsAnonymous());
+        ComplaintCategory complaintCategory = parseCategory(request.getCategory());
         UUID submittedByUserId = null;
         String anonymousToken = null;
 
@@ -102,7 +104,7 @@ public class ComplaintService {
         Complaint complaint = Complaint.builder()
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
-                .category(request.getCategory().name())
+            .category(complaintCategory.name())
                 .status(ComplaintStatus.PENDING.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
@@ -396,5 +398,16 @@ public class ComplaintService {
 
     private String normalizeEmail(String email) {
         return email == null ? null : email.trim().toLowerCase();
+    }
+
+    private ComplaintCategory parseCategory(String category) {
+        if (category == null || category.isBlank()) {
+            throw new BadRequestException("Category is required");
+        }
+        try {
+            return ComplaintCategory.from(category.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException(ex.getMessage());
+        }
     }
 }
