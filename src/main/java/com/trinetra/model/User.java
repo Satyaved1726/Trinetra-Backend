@@ -32,20 +32,20 @@ public class User {
     @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID id;
 
-    @Column(nullable = false, length = 120)
+    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false, unique = true, length = 150)
+    @Column(nullable = false, unique = true)
     private String email;
 
     @Column(name = "password_hash", nullable = false)
     private String password;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false)
     private Role role;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @PrePersist

@@ -1,6 +1,6 @@
 package com.trinetra.model;
 
 public enum Role {
-    ADMIN,
-    EMPLOYEE
+    EMPLOYEE,
+    ADMIN
 }
