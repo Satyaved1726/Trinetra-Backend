@@ -20,7 +20,10 @@ public class RequiredEnvironmentValidator {
         }
 
         List<String> missing = new ArrayList<>();
-        checkRequired("DATABASE_URL", missing);
+        boolean hasUrl = hasAny("DATABASE_URL", "SPRING_DATASOURCE_URL");
+        if (!hasUrl) {
+            missing.add("DATABASE_URL or SPRING_DATASOURCE_URL");
+        }
         checkRequired("JWT_SECRET", missing);
         checkRequired("SPRING_PROFILES_ACTIVE", missing);
 
@@ -36,6 +39,16 @@ public class RequiredEnvironmentValidator {
         if (value == null || value.isBlank()) {
             missing.add(key);
         }
+    }
+
+    private boolean hasAny(String... keys) {
+        for (String key : keys) {
+            String value = environment.getProperty(key);
+            if (value != null && !value.isBlank()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isProductionLikeProfile() {
