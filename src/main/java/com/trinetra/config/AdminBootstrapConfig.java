@@ -35,7 +35,6 @@ public class AdminBootstrapConfig {
                     .username(adminUsername.trim().toLowerCase())
                     .password(passwordEncoder.encode(adminPassword))
                     .role("SUPER_ADMIN")
-                    .active(true)
                     .build();
             adminUserRepository.save(admin);
         };

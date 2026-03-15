@@ -79,7 +79,7 @@ public class AuthController {
         Optional<AdminUser> adminOpt = adminUserRepository.findByUsernameIgnoreCase(email);
         if (adminOpt.isPresent()) {
             AdminUser admin = adminOpt.get();
-            if (Boolean.FALSE.equals(admin.getActive())) {
+            if (!"ADMIN".equalsIgnoreCase(admin.getRole()) && !"SUPER_ADMIN".equalsIgnoreCase(admin.getRole())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("message", "Invalid credentials"));
             }

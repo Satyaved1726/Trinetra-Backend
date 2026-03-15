@@ -53,7 +53,6 @@ public class SuperAdminController {
                 .username(email)
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role("ADMIN")
-                .active(true)
                 .build();
 
         AdminUser saved = adminUserRepository.save(admin);
@@ -62,8 +61,9 @@ public class SuperAdminController {
 
     @GetMapping("/admins")
     public ResponseEntity<List<AdminAccountResponse>> getAdmins() {
-        List<AdminAccountResponse> admins = adminUserRepository.findAllByRoleIgnoreCaseOrderByCreatedAtDesc("ADMIN")
+        List<AdminAccountResponse> admins = adminUserRepository.findAllByRoleIgnoreCase("ADMIN")
                 .stream()
+            .sorted(java.util.Comparator.comparing(AdminUser::getUsername, String.CASE_INSENSITIVE_ORDER))
                 .map(this::toResponse)
                 .toList();
         return ResponseEntity.ok(admins);
@@ -82,7 +82,7 @@ public class SuperAdminController {
             throw new BadRequestException("Only ADMIN accounts can be disabled");
         }
 
-        admin.setActive(false);
+        admin.setRole("DISABLED_ADMIN");
         return ResponseEntity.ok(toResponse(adminUserRepository.save(admin)));
     }
 
@@ -103,8 +103,8 @@ public class SuperAdminController {
                 .id(admin.getId())
                 .email(admin.getUsername())
                 .role(admin.getRole())
-                .active(Boolean.TRUE.equals(admin.getActive()))
-                .createdAt(admin.getCreatedAt())
+            .active(!"DISABLED_ADMIN".equalsIgnoreCase(admin.getRole()))
+            .createdAt(null)
                 .build();
     }
 }

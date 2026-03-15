@@ -25,11 +25,14 @@ public class CustomUserDetailsService implements UserDetailsService {
         Optional<AdminUser> adminOpt = adminUserRepository.findByUsernameIgnoreCase(identifier);
         if (adminOpt.isPresent()) {
             AdminUser admin = adminOpt.get();
+            String role = admin.getRole() == null ? "" : admin.getRole().toUpperCase();
+            if (!"ADMIN".equals(role) && !"SUPER_ADMIN".equals(role)) {
+                throw new UsernameNotFoundException("Admin account is inactive");
+            }
             return org.springframework.security.core.userdetails.User.builder()
                     .username(admin.getUsername())
                     .password(admin.getPassword())
-                    .authorities(new SimpleGrantedAuthority("ROLE_" + admin.getRole().toUpperCase()))
-                    .disabled(Boolean.FALSE.equals(admin.getActive()))
+                    .authorities(new SimpleGrantedAuthority("ROLE_" + role))
                     .build();
         }
 
