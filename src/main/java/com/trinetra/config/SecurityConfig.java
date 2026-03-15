@@ -46,7 +46,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/complaints", "/api/complaints/anonymous", "/api/complaints/upload").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/complaints", "/api/complaints/anonymous").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/complaints/submit", "/api/complaints/track").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/complaints/track/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()

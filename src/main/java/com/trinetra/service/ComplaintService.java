@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -35,7 +34,6 @@ public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
-    private final FileStorageService fileStorageService;
     private final EvidenceRepository evidenceRepository;
 
     @Transactional
@@ -104,158 +102,6 @@ public class ComplaintService {
     public ComplaintSubmissionResponse submitAnonymousComplaint(ComplaintRequest request) {
         request.setIsAnonymous(true);
         return submitComplaint(request, null);
-    }
-
-    @Transactional
-    public ComplaintSubmissionResponse submitComplaintWithFiles(
-            ComplaintRequest request,
-            List<MultipartFile> files,
-            String userEmail) {
-        boolean anonymous = Boolean.TRUE.equals(request.getIsAnonymous());
-        ComplaintCategory complaintCategory = parseCategory(request.getCategory());
-        UUID submittedByUserId = null;
-        String anonymousToken = null;
-
-        if (anonymous) {
-            anonymousToken = UUID.randomUUID().toString();
-        } else {
-            if (userEmail == null || userEmail.isBlank()) {
-                throw new UnauthorizedException("Authentication required for non-anonymous complaint submission");
-            }
-            User user = userRepository.findByEmail(normalizeEmail(userEmail))
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            submittedByUserId = user.getId();
-        }
-
-        Complaint complaint = Complaint.builder()
-                .title(request.getTitle().trim())
-                .description(request.getDescription().trim())
-            .category(complaintCategory.name())
-                .status(ComplaintStatus.PENDING.name())
-                .anonymous(anonymous)
-                .trackingId(generateTrackingId())
-                .userId(submittedByUserId)
-                .anonymousToken(anonymousToken)
-                .build();
-
-        complaint = complaintRepository.save(complaint);
-
-        if (files != null) {
-            for (MultipartFile file : files) {
-                if (file == null || file.isEmpty()) continue;
-                Map<String, String> stored = fileStorageService.storeFile(file);
-                Evidence evidence = Evidence.builder()
-                        .complaint(complaint)
-                        .fileUrl(stored.get("fileUrl"))
-                        .fileType(stored.get("fileType"))
-                        .build();
-                evidenceRepository.save(evidence);
-                if (complaint.getEvidenceUrl() == null) {
-                    complaint.setEvidenceUrl(stored.get("fileUrl"));
-                    complaintRepository.save(complaint);
-                }
-            }
-        }
-
-        return ComplaintSubmissionResponse.builder()
-                .message("Complaint submitted successfully")
-                .trackingId(complaint.getTrackingId())
-                .anonymousToken(complaint.getAnonymousToken())
-                .build();
-    }
-
-    @Transactional
-    public Map<String, String> submitComplaintMultipart(
-            String title,
-            String description,
-            String category,
-            boolean anonymous,
-            MultipartFile evidence,
-            String userEmail
-    ) {
-        if (title == null || title.isBlank()) {
-            throw new BadRequestException("Title is required");
-        }
-        if (description == null || description.isBlank()) {
-            throw new BadRequestException("Description is required");
-        }
-        if (category == null || category.isBlank()) {
-            throw new BadRequestException("Category is required");
-        }
-
-        ComplaintCategory complaintCategory;
-        try {
-            complaintCategory = ComplaintCategory.from(category.trim());
-        } catch (IllegalArgumentException ex) {
-            throw new BadRequestException(ex.getMessage());
-        }
-
-        UUID userId = null;
-        if (!anonymous && userEmail != null && !userEmail.isBlank()) {
-            User user = userRepository.findByEmail(normalizeEmail(userEmail))
-                    .orElseThrow(() -> new UserNotFoundException("User not found"));
-            userId = user.getId();
-        }
-
-        Complaint complaint = Complaint.builder()
-                .title(title.trim())
-                .description(description.trim())
-                .category(complaintCategory.name())
-                .status(ComplaintStatus.PENDING.name())
-                .anonymous(anonymous)
-                .trackingId(generateTrackingId())
-            .userId(anonymous ? null : userId)
-            .anonymousToken(anonymous ? UUID.randomUUID().toString() : null)
-                .build();
-
-        if (evidence != null && !evidence.isEmpty()) {
-            Map<String, String> stored = fileStorageService.storeFile(evidence);
-            String fileUrl = stored.get("fileUrl");
-            complaint.setEvidenceUrl(fileUrl);
-            complaint = complaintRepository.save(complaint);
-            Evidence evidenceRow = Evidence.builder()
-                    .complaint(complaint)
-                    .fileUrl(fileUrl)
-                    .fileType(stored.get("fileType"))
-                    .build();
-            evidenceRepository.save(evidenceRow);
-        } else {
-            complaint = complaintRepository.save(complaint);
-        }
-
-        return Map.of(
-                "trackingId", complaint.getTrackingId(),
-            "anonymousToken", complaint.getAnonymousToken() == null ? "" : complaint.getAnonymousToken(),
-                "message", "Complaint submitted successfully"
-        );
-    }
-
-    @Transactional
-    public Map<String, String> uploadEvidence(MultipartFile file, UUID complaintId) {
-        Map<String, String> stored = fileStorageService.storeFile(file);
-        String fileUrl = stored.get("fileUrl");
-        String fileType = stored.get("fileType");
-
-        if (complaintId != null) {
-            Complaint complaint = complaintRepository.findById(complaintId)
-                    .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
-            if (complaint.getEvidenceUrl() == null || complaint.getEvidenceUrl().isBlank()) {
-                complaint.setEvidenceUrl(fileUrl);
-                complaintRepository.save(complaint);
-            }
-            Evidence evidence = Evidence.builder()
-                    .complaint(complaint)
-                    .fileUrl(fileUrl)
-                    .fileType(fileType)
-                    .build();
-            evidenceRepository.save(evidence);
-        }
-
-        return Map.of(
-                "fileUrl", fileUrl,
-                "fileType", fileType,
-                "message", "Evidence uploaded successfully"
-        );
     }
 
     @Transactional(readOnly = true)
