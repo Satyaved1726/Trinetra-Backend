@@ -22,10 +22,10 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(jakarta.servlet.http.HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path.startsWith("/api/auth/") || path.startsWith("/auth/")
+        String path = request.getServletPath();
+        return path.startsWith("/api/auth") || path.startsWith("/auth/")
                 || path.equals("/api/health") || path.equals("/health")
-                || path.startsWith("/actuator/");
+                || path.startsWith("/actuator/") || path.startsWith("/api/public/");
     }
 
     @Override
