@@ -122,21 +122,21 @@ public class ComplaintController {
 
     // GET /api/complaints — list all complaints (admin)
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<ComplaintResponse>> getAllComplaints() {
         return ResponseEntity.ok(complaintService.getAllComplaints());
     }
 
     // GET /api/complaints/all — list all complaints (admin, legacy path)
     @GetMapping("/all")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<ComplaintResponse>> getAllComplaintsLegacy() {
         return ResponseEntity.ok(complaintService.getAllComplaints());
     }
 
     // GET /api/complaints/{id} — get single complaint by UUID
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'EMPLOYEE')")
     public ResponseEntity<ComplaintResponse> getComplaintById(@PathVariable UUID id) {
         return ResponseEntity.ok(complaintService.getComplaintById(id));
     }
@@ -156,7 +156,7 @@ public class ComplaintController {
 
     // PUT /api/complaints/{id}/status — update status (admin)
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ComplaintResponse> updateComplaintStatus(
             @PathVariable UUID id,
             @RequestBody java.util.Map<String, String> payload
@@ -171,7 +171,7 @@ public class ComplaintController {
 
     // PUT /api/complaints/status/{id} — legacy path
     @PutMapping("/status/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ComplaintResponse> updateComplaintStatusLegacy(
             @PathVariable UUID id,
             @RequestBody java.util.Map<String, String> payload
@@ -186,7 +186,7 @@ public class ComplaintController {
 
     // DELETE /api/complaints/{id} — delete complaint (admin)
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Void> deleteComplaint(@PathVariable UUID id) {
         complaintService.deleteComplaint(id);
         return ResponseEntity.noContent().build();

@@ -19,22 +19,23 @@ public class AdminBootstrapConfig {
 
     @Bean
     public CommandLineRunner bootstrapAdmin(
-            @Value("${app.bootstrap-admin.username:admin@trinetra.com}") String adminUsername,
-            @Value("${app.bootstrap-admin.password:admin123}") String adminPassword
+            @Value("${app.bootstrap-super-admin.username:superadmin@trinetra.com}") String adminUsername,
+            @Value("${app.bootstrap-super-admin.password:SuperAdmin@123}") String adminPassword
     ) {
         return args -> {
-            if (adminUserRepository.count() > 0) {
+            if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminPassword)) {
                 return;
             }
 
-            if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminPassword)) {
+            if (adminUserRepository.findFirstByRoleIgnoreCase("SUPER_ADMIN").isPresent()) {
                 return;
             }
 
             AdminUser admin = AdminUser.builder()
                     .username(adminUsername.trim().toLowerCase())
                     .password(passwordEncoder.encode(adminPassword))
-                    .role("ADMIN")
+                    .role("SUPER_ADMIN")
+                    .active(true)
                     .build();
             adminUserRepository.save(admin);
         };

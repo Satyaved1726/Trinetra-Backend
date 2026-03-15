@@ -31,31 +31,31 @@ public class AdminDashboardController {
     private final UserRepository userRepository;
 
     @GetMapping("/stats")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AdminStatsResponse> getStats() {
         return ResponseEntity.ok(complaintService.getAdminStats());
     }
 
     @GetMapping("/recent")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<ComplaintResponse>> getRecentComplaints() {
         return ResponseEntity.ok(complaintService.getRecentComplaints());
     }
 
     @GetMapping("/complaints")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<ComplaintResponse>> getAllComplaints() {
         return ResponseEntity.ok(complaintService.getAllComplaints());
     }
 
     @GetMapping("/complaints/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ComplaintResponse> getComplaintById(@PathVariable UUID id) {
         return ResponseEntity.ok(complaintService.getComplaintById(id));
     }
 
     @PutMapping("/complaints/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ComplaintResponse> updateComplaintStatus(@RequestBody Map<String, String> payload) {
         String id = payload.get("id");
         String status = payload.get("status");
@@ -67,7 +67,7 @@ public class AdminDashboardController {
     }
 
     @GetMapping("/users")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<AdminUserSummaryResponse>> getUsers() {
         List<AdminUserSummaryResponse> users = userRepository.findAll().stream()
                 .map(u -> AdminUserSummaryResponse.builder()
@@ -81,7 +81,7 @@ public class AdminDashboardController {
     }
 
     @GetMapping("/analytics")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AdminAnalyticsResponse> getAnalytics() {
         return ResponseEntity.ok(complaintService.getAdminAnalytics());
     }

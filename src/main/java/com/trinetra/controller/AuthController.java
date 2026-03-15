@@ -45,7 +45,7 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(Map.of("message", "Name is required"));
             }
 
-            if (userRepository.existsByEmail(email)) {
+            if (userRepository.existsByEmail(email) || adminUserRepository.existsByUsernameIgnoreCase(email)) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "Email already registered"));
             }
@@ -79,29 +79,33 @@ public class AuthController {
         Optional<AdminUser> adminOpt = adminUserRepository.findByUsernameIgnoreCase(email);
         if (adminOpt.isPresent()) {
             AdminUser admin = adminOpt.get();
+            if (Boolean.FALSE.equals(admin.getActive())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("message", "Invalid credentials"));
+            }
             if (!passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(Map.of("message", "Invalid email or password"));
+                        .body(Map.of("message", "Invalid credentials"));
             }
 
             String token = jwtUtil.generateToken(admin.getUsername());
             return ResponseEntity.ok(Map.of(
                     "token", token,
                     "email", admin.getUsername(),
-                    "role", "ADMIN"
+                    "role", admin.getRole()
             ));
         }
 
         Optional<User> employeeOpt = userRepository.findByEmail(email);
         if (employeeOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Invalid email or password"));
+                    .body(Map.of("message", "Invalid credentials"));
         }
 
         User employee = employeeOpt.get();
         if (!passwordEncoder.matches(request.getPassword(), employee.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("message", "Invalid email or password"));
+                    .body(Map.of("message", "Invalid credentials"));
         }
 
         String token = jwtUtil.generateToken(employee.getEmail());
