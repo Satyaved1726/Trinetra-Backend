@@ -38,19 +38,27 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Email is required"));
         }
 
-        if (adminUserRepository.existsByUsernameIgnoreCase(email)) {
+        String name = request.getName() == null ? null : request.getName().trim();
+        if (!StringUtils.hasText(name)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Name is required"));
+        }
+
+        if (userRepository.existsByEmail(email) || adminUserRepository.existsByUsernameIgnoreCase(email)) {
             return ResponseEntity.badRequest()
                     .body(Map.of("message", "User already exists"));
         }
 
-        AdminUser user = new AdminUser();
-        user.setUsername(email);
+        User user = new User();
+        user.setName(name);
+        user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("ADMIN");
-        adminUserRepository.save(user);
+        user.setRole(Role.EMPLOYEE);
+        userRepository.save(user);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                "message", "Admin registered successfully"
+                "message", "User registered successfully",
+                "email", user.getEmail(),
+                "role", user.getRole().name()
         ));
     }
 

@@ -5,11 +5,7 @@ services:
     buildCommand: ./mvnw clean package -DskipTests
     startCommand: java -jar target/*.jar
     envVars:
-      - key: SPRING_DATASOURCE_URL
-        sync: false
-      - key: SPRING_DATASOURCE_USERNAME
-        sync: false
-      - key: SPRING_DATASOURCE_PASSWORD
+      - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
         sync: false
@@ -18,4 +14,4 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: production
       - key: APP_CORS_ALLOWED_ORIGIN_PATTERNS
-        value: https://*.vercel.app
+        value: https://trinetra-weld.vercel.app,https://*.vercel.app

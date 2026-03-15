@@ -14,10 +14,7 @@ Production-ready Spring Boot backend for the TRINETRA Complaint Management SaaS.
 
 ## Environment Variables
 
-- `SPRING_DATASOURCE_URL`
 - `DATABASE_URL`
-- `SPRING_DATASOURCE_USERNAME`
-- `SPRING_DATASOURCE_PASSWORD`
 - `SPRING_PROFILES_ACTIVE`
 - `SERVER_PORT` optional for local runs (Render provides `PORT`)
 - `JWT_SECRET`
@@ -31,12 +28,12 @@ Production-ready Spring Boot backend for the TRINETRA Complaint Management SaaS.
 
 ## Deployment Required Variables
 
-- `SPRING_DATASOURCE_URL` or `DATABASE_URL`
-- `SPRING_DATASOURCE_USERNAME`
-- `SPRING_DATASOURCE_PASSWORD`
+- `DATABASE_URL`
 - `SPRING_PROFILES_ACTIVE`
 - `JWT_SECRET`
 - `JWT_EXPIRATION`
+
+Important: remove any stale `SPRING_JPA_DATABASE_PLATFORM` or `SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT` environment variables from Render if they point to H2.
 
 Supabase pooler production JDBC format:
 
