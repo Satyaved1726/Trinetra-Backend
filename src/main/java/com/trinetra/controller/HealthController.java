@@ -3,6 +3,7 @@ package com.trinetra.controller;
 import com.trinetra.dto.HealthStatusResponse;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.Map;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -35,5 +36,10 @@ public class HealthController {
                 .status("RUNNING")
                 .database("DISCONNECTED")
                 .build());
+    }
+
+    @GetMapping("/api/health")
+    public ResponseEntity<Map<String, String>> apiHealth() {
+        return ResponseEntity.ok(Map.of("status", "OK"));
     }
 }

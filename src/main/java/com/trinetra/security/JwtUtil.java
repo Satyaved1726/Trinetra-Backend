@@ -18,7 +18,7 @@ import org.springframework.util.StringUtils;
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
+    @Value("${JWT_SECRET:dHJpbmV0cmEtZGVmYXVsdC1zZWNyZXQtdHJpbmV0cmEtMjAyNg==}")
     private String jwtSecret;
 
     @Value("${app.jwt.expiration-ms}")
@@ -43,6 +43,18 @@ public class JwtUtil {
         return Jwts.builder()
                 .claims(claims)
                 .subject(userDetails.getUsername())
+                .issuedAt(now)
+                .expiration(expiry)
+                .signWith(signingKey)
+                .compact();
+    }
+
+    public String generateToken(String username) {
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + expirationMs);
+
+        return Jwts.builder()
+                .subject(username)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(signingKey)

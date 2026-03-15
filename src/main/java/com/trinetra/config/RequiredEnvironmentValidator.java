@@ -15,6 +15,10 @@ public class RequiredEnvironmentValidator {
 
     @PostConstruct
     void validateRequiredEnvironmentVariables() {
+        if (!isProductionLikeProfile()) {
+            return;
+        }
+
         List<String> missing = new ArrayList<>();
         checkRequired("SPRING_DATASOURCE_URL", missing);
         checkRequired("SPRING_DATASOURCE_USERNAME", missing);
@@ -34,5 +38,15 @@ public class RequiredEnvironmentValidator {
         if (value == null || value.isBlank()) {
             missing.add(key);
         }
+    }
+
+    private boolean isProductionLikeProfile() {
+        String[] activeProfiles = environment.getActiveProfiles();
+        for (String profile : activeProfiles) {
+            if ("prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -11,6 +11,7 @@ import lombok.Getter;
 public class ComplaintTrackingResponse {
 
     private String trackingId;
+    private String evidenceUrl;
     private String title;
     private ComplaintCategory category;
     private ComplaintStatus status;

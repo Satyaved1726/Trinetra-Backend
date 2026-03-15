@@ -1,25 +1,28 @@
 # TRINETRA Backend
 
-Production-ready Spring Boot backend for the TRINETRA Anonymous Workplace Reporting System.
+Production-ready Spring Boot backend for the TRINETRA Complaint Management SaaS.
 
 ## Stack
 
 - Spring Boot 3.3
-- Java 17 baseline
+- Java 21
 - Spring Security with JWT
 - Spring Data JPA and Hibernate
 - PostgreSQL (Supabase-compatible)
+- Multipart file uploads (images, videos, PDFs, documents)
 - Maven
 
 ## Environment Variables
 
 - `SPRING_DATASOURCE_URL`
+- `DATABASE_URL`
 - `SPRING_DATASOURCE_USERNAME`
 - `SPRING_DATASOURCE_PASSWORD`
 - `SPRING_PROFILES_ACTIVE`
 - `SERVER_PORT` optional for local runs (Render provides `PORT`)
 - `JWT_SECRET`
 - `JWT_EXPIRATION`
+- `STORAGE_URL` optional external file base URL (Supabase/S3 compatible)
 - `APP_CORS_ALLOWED_ORIGIN_PATTERNS` optional, default allows localhost and `https://*.vercel.app`
 - `APP_UPLOAD_DIR` optional, default `uploads`
 - `APP_BOOTSTRAP_ADMIN_EMAIL` optional
@@ -28,7 +31,7 @@ Production-ready Spring Boot backend for the TRINETRA Anonymous Workplace Report
 
 ## Deployment Required Variables
 
-- `SPRING_DATASOURCE_URL`
+- `SPRING_DATASOURCE_URL` or `DATABASE_URL`
 - `SPRING_DATASOURCE_USERNAME`
 - `SPRING_DATASOURCE_PASSWORD`
 - `SPRING_PROFILES_ACTIVE`
@@ -59,18 +62,41 @@ java -jar target\trinetra-backend-0.0.1-SNAPSHOT.jar
 
 ## API Summary
 
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `POST /api/complaints/submit` employee complaint submission
-- `POST /api/complaints/anonymous` anonymous complaint submission
-- `GET /api/complaints/track/{trackingId}` anonymous tracking without login
-- `GET /api/complaints/my` employee complaints
-- `GET /api/complaints/all` admin complaint list
-- `PUT /api/complaints/status/{id}` admin status update
-- `GET /api/admin/reports`
-- `PUT /api/admin/report/{id}/status`
-- `POST /api/admin/respond/{reportId}`
-- `GET /health`
+- Public/Auth:
+  - `POST /api/auth/admin/login`
+  - `POST /api/auth/employee/login`
+  - `POST /api/auth/register`
+  - `POST /api/complaints`
+  - `POST /api/complaints/upload`
+  - `GET /api/complaints/track/{trackingId}`
+- Employee:
+  - `POST /api/employee/complaints`
+  - `GET /api/employee/my-complaints`
+- Admin:
+  - `GET /api/admin/complaints`
+  - `GET /api/admin/complaints/{id}`
+  - `PUT /api/admin/complaints/status`
+  - `GET /api/admin/users`
+  - `GET /api/admin/analytics`
+  - `GET /api/admin/stats`
+- Health:
+  - `GET /api/health`
+  - `GET /actuator/health`
+
+## Roles And Security
+
+- `ADMIN` routes: `/api/admin/**`
+- `EMPLOYEE` routes: `/api/employee/**`
+- Public routes: `/api/auth/**`, `POST /api/complaints`, `GET /api/complaints/track/**`, `/uploads/**`
+- JWT required for protected routes via `Authorization: Bearer <token>`
+
+## Complaint Lifecycle
+
+- `PENDING`
+- `UNDER_REVIEW`
+- `INVESTIGATING`
+- `RESOLVED`
+- `REJECTED`
 
 ## Multipart Report Submission
 

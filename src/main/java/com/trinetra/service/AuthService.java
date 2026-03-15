@@ -37,20 +37,22 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         String normalizedEmail = request.getEmail().trim().toLowerCase();
-        if (userRepository.existsByEmail(normalizedEmail)) {
-            throw new BadRequestException("Email is already registered");
+        if (adminUserRepository.existsByUsernameIgnoreCase(normalizedEmail)) {
+            throw new BadRequestException("User already exists");
         }
 
-        User user = User.builder()
-                .name(request.getName().trim())
-                .email(normalizedEmail)
+        AdminUser user = AdminUser.builder()
+                .username(normalizedEmail)
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.EMPLOYEE)
+                .role("ADMIN")
                 .build();
-        userRepository.save(user);
+        AdminUser saved = adminUserRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
-        return buildAuthResponse(user, userDetails);
+        return AuthResponse.builder()
+                .jwtToken(jwtUtil.generateToken(saved.getUsername()))
+                .role(Role.ADMIN)
+                .userId(saved.getId().toString())
+                .build();
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -70,9 +72,8 @@ public class AuthService {
 
         if (adminOpt.isPresent()) {
             AdminUser admin = adminOpt.get();
-            UserDetails userDetails = userDetailsService.loadUserByUsername(admin.getUsername());
             return AuthResponse.builder()
-                    .jwtToken(jwtUtil.generateToken(userDetails))
+                    .jwtToken(jwtUtil.generateToken(admin.getUsername()))
                     .role(Role.ADMIN)
                     .userId(admin.getId().toString())
                     .build();

@@ -5,8 +5,9 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Arrays;
 
 public enum ComplaintStatus {
-    SUBMITTED("Submitted"),
+    PENDING("Pending"),
     UNDER_REVIEW("Under Review"),
+    INVESTIGATING("Investigating"),
     RESOLVED("Resolved"),
     REJECTED("Rejected");
 
@@ -23,6 +24,9 @@ public enum ComplaintStatus {
 
     @JsonCreator
     public static ComplaintStatus from(String value) {
+        if ("submitted".equalsIgnoreCase(value)) {
+            return PENDING;
+        }
         return Arrays.stream(values())
                 .filter(status -> status.name().equalsIgnoreCase(value.replace(' ', '_'))
                         || status.label.equalsIgnoreCase(value))

@@ -66,7 +66,8 @@ public class AdminService {
                 .build();
         responseRepository.save(response);
 
-        if (ComplaintStatus.SUBMITTED.name().equals(complaint.getStatus())) {
+        if (ComplaintStatus.PENDING.name().equalsIgnoreCase(complaint.getStatus())
+                || "SUBMITTED".equalsIgnoreCase(complaint.getStatus())) {
             complaint.setStatus(ComplaintStatus.UNDER_REVIEW.name());
         }
         complaint.setAdmin(admin);

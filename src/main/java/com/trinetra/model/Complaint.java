@@ -55,6 +55,12 @@ public class Complaint {
     @Column(name = "tracking_id", nullable = false, unique = true, length = 25)
     private String trackingId;
 
+    @Column(name = "evidence_url")
+    private String evidenceUrl;
+
+    @Column(name = "created_by")
+    private UUID createdBy;
+
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
@@ -64,7 +70,7 @@ public class Complaint {
     @PrePersist
     void onCreate() {
         if (status == null) {
-            status = ComplaintStatus.SUBMITTED.name();
+            status = ComplaintStatus.PENDING.name();
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();

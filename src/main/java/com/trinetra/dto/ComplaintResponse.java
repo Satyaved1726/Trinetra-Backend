@@ -13,6 +13,7 @@ public class ComplaintResponse {
 
     private UUID id;
     private String trackingId;
+    private String evidenceUrl;
     private String title;
     private String description;
     private ComplaintCategory category;
@@ -20,5 +21,6 @@ public class ComplaintResponse {
     private LocalDateTime createdAt;
     private boolean anonymous;
     private UUID userId;
+    private UUID createdBy;
     private UUID adminId;
 }

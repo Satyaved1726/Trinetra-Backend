@@ -10,9 +10,11 @@ import com.trinetra.service.ComplaintService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -21,8 +23,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/complaints")
@@ -32,7 +37,7 @@ public class ComplaintController {
     private final ComplaintService complaintService;
 
     // POST /api/complaints — authenticated submit (employees or anonymous)
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ComplaintSubmissionResponse> submitComplaint(
             @Valid @RequestBody ComplaintRequest request,
             Principal principal
@@ -40,6 +45,28 @@ public class ComplaintController {
         ComplaintSubmissionResponse response = principal != null
                 ? complaintService.submitComplaint(request, principal.getName())
                 : complaintService.submitAnonymousComplaint(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // POST /api/complaints — multipart submit with optional evidence
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> submitComplaintWithEvidence(
+            @RequestParam String title,
+            @RequestParam String description,
+            @RequestParam String category,
+            @RequestParam boolean anonymous,
+            @RequestParam(required = false) MultipartFile evidence,
+            Principal principal
+    ) {
+        String userEmail = principal != null ? principal.getName() : null;
+        Map<String, String> response = complaintService.submitComplaintMultipart(
+                title,
+                description,
+                category,
+                anonymous,
+                evidence,
+                userEmail
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -60,6 +87,36 @@ public class ComplaintController {
             @Valid @RequestBody ComplaintRequest request
     ) {
         ComplaintSubmissionResponse response = complaintService.submitAnonymousComplaint(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // POST /api/complaints/anonymous — multipart submit with optional evidence
+    @PostMapping(value = "/anonymous", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> submitAnonymousComplaintWithEvidence(
+            @RequestParam String title,
+            @RequestParam String description,
+            @RequestParam String category,
+            @RequestParam(required = false, defaultValue = "true") boolean anonymous,
+            @RequestParam(required = false) MultipartFile evidence
+    ) {
+        Map<String, String> response = complaintService.submitComplaintMultipart(
+                title,
+                description,
+                category,
+                anonymous,
+                evidence,
+                null
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // POST /api/complaints/upload — upload evidence file and return file URL
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> uploadEvidence(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(required = false) UUID complaintId
+    ) {
+        Map<String, String> response = complaintService.uploadEvidence(file, complaintId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
