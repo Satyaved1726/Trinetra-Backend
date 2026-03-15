@@ -64,7 +64,7 @@ public class Complaint {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "is_anonymous", nullable = false)
+    @Column(name = "anonymous", nullable = false)
     private Boolean anonymous;
 
     @PrePersist
