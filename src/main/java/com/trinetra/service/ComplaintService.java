@@ -6,7 +6,7 @@ import com.trinetra.dto.ComplaintRequest;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
-import com.trinetra.dto.EvidenceFileRequest;
+import com.trinetra.dto.EvidenceDTO;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ComplaintNotFoundException;
 import com.trinetra.exception.UnauthorizedException;
@@ -67,9 +67,9 @@ public class ComplaintService {
 
         Complaint saved = complaintRepository.save(complaint);
 
-        List<EvidenceFileRequest> evidenceFiles = request.getEvidenceFiles();
+        List<EvidenceDTO> evidenceFiles = request.getEvidenceFiles();
         if (evidenceFiles != null) {
-            for (EvidenceFileRequest file : evidenceFiles) {
+            for (EvidenceDTO file : evidenceFiles) {
                 if (file == null || file.getUrl() == null || file.getUrl().isBlank()) {
                     continue;
                 }

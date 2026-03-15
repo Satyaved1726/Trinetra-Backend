@@ -68,7 +68,7 @@ public class Complaint {
     private Boolean anonymous;
 
     @PrePersist
-    void onCreate() {
+    void prePersist() {
         if (status == null) {
             status = ComplaintStatus.SUBMITTED.name();
         }

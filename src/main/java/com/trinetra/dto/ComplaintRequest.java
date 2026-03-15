@@ -26,5 +26,5 @@ public class ComplaintRequest {
     @JsonAlias({"anonymous"})
     private Boolean isAnonymous;
 
-    private List<EvidenceFileRequest> evidenceFiles = new ArrayList<>();
+    private List<EvidenceDTO> evidenceFiles = new ArrayList<>();
 }

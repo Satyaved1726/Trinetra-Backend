@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/complaints")
 @RequiredArgsConstructor
+@Slf4j
 public class ComplaintController {
 
     private final ComplaintService complaintService;
@@ -41,6 +43,13 @@ public class ComplaintController {
             @Valid @RequestBody ComplaintRequest request,
             Principal principal
     ) {
+        log.info(
+            "Complaint payload received on /api/complaints: title='{}', category='{}', isAnonymous={}, evidenceCount={}",
+            request.getTitle(),
+            request.getCategory(),
+            request.getIsAnonymous(),
+            request.getEvidenceFiles() == null ? 0 : request.getEvidenceFiles().size()
+        );
         ComplaintSubmissionResponse response = principal != null
                 ? complaintService.submitComplaint(request, principal.getName())
                 : complaintService.submitAnonymousComplaint(request);
@@ -53,6 +62,13 @@ public class ComplaintController {
             @Valid @RequestBody ComplaintRequest request,
             Authentication authentication
     ) {
+        log.info(
+            "Complaint payload received on /api/complaints/submit: title='{}', category='{}', isAnonymous={}, evidenceCount={}",
+            request.getTitle(),
+            request.getCategory(),
+            request.getIsAnonymous(),
+            request.getEvidenceFiles() == null ? 0 : request.getEvidenceFiles().size()
+        );
         String userEmail = authentication != null ? authentication.getName() : null;
         ComplaintSubmissionResponse response = complaintService.submitComplaint(request, userEmail);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
