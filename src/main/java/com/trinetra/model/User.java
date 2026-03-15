@@ -29,7 +29,7 @@ public class User {
     @Id
     @GeneratedValue
     @UuidGenerator
-    @Column(nullable = false, updatable = false)
+    @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID id;
 
     @Column(nullable = false, length = 120)
