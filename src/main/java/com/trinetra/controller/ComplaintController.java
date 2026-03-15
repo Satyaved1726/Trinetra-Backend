@@ -72,16 +72,14 @@ public class ComplaintController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // POST /api/complaints/submit — authenticated employee submit (legacy)
-    // POST /api/complaints/submit — multipart submit with optional evidence files
-    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    // POST /api/complaints/submit — JSON submit with evidence URLs
+    @PostMapping(value = "/submit", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ComplaintSubmissionResponse> submitComplaint(
-            @RequestPart("data") @Valid ComplaintRequest request,
-            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            @Valid @RequestBody ComplaintRequest request,
             Authentication authentication
     ) {
         String userEmail = authentication != null ? authentication.getName() : null;
-        ComplaintSubmissionResponse response = complaintService.submitComplaintWithFiles(request, files, userEmail);
+        ComplaintSubmissionResponse response = complaintService.submitComplaint(request, userEmail);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

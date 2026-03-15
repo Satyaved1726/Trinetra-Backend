@@ -24,7 +24,7 @@ import org.hibernate.annotations.UuidGenerator;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "evidence")
+@Table(name = "complaint_evidence_files")
 public class Evidence {
 
     @Id
@@ -43,13 +43,13 @@ public class Evidence {
     @Column(name = "file_type", nullable = false, length = 120)
     private String fileType;
 
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "uploaded_at", nullable = false)
+    private LocalDateTime uploadedAt;
 
     @PrePersist
     void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
+        if (uploadedAt == null) {
+            uploadedAt = LocalDateTime.now();
         }
     }
 }

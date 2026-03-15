@@ -3,6 +3,8 @@ package com.trinetra.dto;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -23,4 +25,6 @@ public class ComplaintRequest {
 
     @JsonAlias({"anonymous"})
     private Boolean isAnonymous;
+
+    private List<EvidenceFileRequest> evidenceFiles = new ArrayList<>();
 }

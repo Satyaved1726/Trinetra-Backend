@@ -6,6 +6,7 @@ import com.trinetra.dto.ComplaintRequest;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
+import com.trinetra.dto.EvidenceFileRequest;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ComplaintNotFoundException;
 import com.trinetra.exception.UnauthorizedException;
@@ -67,6 +68,31 @@ public class ComplaintService {
                 .build();
 
         Complaint saved = complaintRepository.save(complaint);
+
+        List<EvidenceFileRequest> evidenceFiles = request.getEvidenceFiles();
+        if (evidenceFiles != null) {
+            for (EvidenceFileRequest file : evidenceFiles) {
+                if (file == null || file.getUrl() == null || file.getUrl().isBlank()) {
+                    continue;
+                }
+                String fileType = (file.getType() == null || file.getType().isBlank())
+                        ? "application/octet-stream"
+                        : file.getType().trim();
+
+                Evidence evidence = Evidence.builder()
+                        .complaint(saved)
+                        .fileUrl(file.getUrl().trim())
+                        .fileType(fileType)
+                        .build();
+                evidenceRepository.save(evidence);
+
+                if (saved.getEvidenceUrl() == null || saved.getEvidenceUrl().isBlank()) {
+                    saved.setEvidenceUrl(file.getUrl().trim());
+                    saved = complaintRepository.save(saved);
+                }
+            }
+        }
+
         return ComplaintSubmissionResponse.builder()
             .message("Complaint submitted")
                 .trackingId(saved.getTrackingId())
