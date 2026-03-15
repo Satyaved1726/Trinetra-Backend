@@ -47,7 +47,7 @@ public class AuthController {
 
             if (userRepository.existsByEmail(email) || adminUserRepository.existsByUsernameIgnoreCase(email)) {
                 return ResponseEntity.badRequest()
-                        .body(Map.of("message", "User already exists"));
+                        .body(Map.of("message", "Email already registered"));
             }
 
             User user = new User();
@@ -57,16 +57,14 @@ public class AuthController {
             user.setRole(Role.EMPLOYEE);
             userRepository.save(user);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
-                    "message", "User registered successfully",
-                    "email", user.getEmail(),
-                    "role", user.getRole().name()
-            ));
+                return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(Map.of("message", "User registered successfully"));
         } catch (DataIntegrityViolationException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", "User already exists"));
+                return ResponseEntity.badRequest().body(Map.of("message", "Email already registered"));
         } catch (Exception e) {
+                e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "Registration failed. Please try again."));
+                    .body(Map.of("message", "Registration failed"));
         }
     }
 
