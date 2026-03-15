@@ -49,7 +49,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/complaints", "/api/complaints/anonymous", "/api/complaints/upload").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/complaints/track/**").permitAll()
                         .requestMatchers("/uploads/**").permitAll()
-                    .requestMatchers("/api/superadmin/**").hasRole("SUPER_ADMIN")
+                    .requestMatchers("/api/super-admin/**", "/api/superadmin/**").hasRole("SUPER_ADMIN")
                     .requestMatchers("/api/admin/**", "/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN")
                     .requestMatchers("/api/complaints/**").authenticated()
                         .requestMatchers("/api/employee/**").hasRole("EMPLOYEE")

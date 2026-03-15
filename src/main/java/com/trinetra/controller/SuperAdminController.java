@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/superadmin")
+@RequestMapping({"/api/super-admin", "/api/superadmin"})
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('SUPER_ADMIN')")
 public class SuperAdminController {
@@ -61,7 +61,7 @@ public class SuperAdminController {
 
     @GetMapping("/admins")
     public ResponseEntity<List<AdminAccountResponse>> getAdmins() {
-        List<AdminAccountResponse> admins = adminUserRepository.findAllByRoleIgnoreCase("ADMIN")
+        List<AdminAccountResponse> admins = adminUserRepository.findAllByRole("ADMIN")
                 .stream()
             .sorted(java.util.Comparator.comparing(AdminUser::getUsername, String.CASE_INSENSITIVE_ORDER))
                 .map(this::toResponse)
