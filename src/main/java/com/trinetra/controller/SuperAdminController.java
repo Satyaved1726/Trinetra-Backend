@@ -2,14 +2,12 @@ package com.trinetra.controller;
 
 import com.trinetra.dto.AdminAccountResponse;
 import com.trinetra.dto.AdminAnalyticsResponse;
-import com.trinetra.dto.CreateAdminRequest;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ResourceNotFoundException;
 import com.trinetra.model.AdminUser;
 import com.trinetra.repository.AdminUserRepository;
 import com.trinetra.repository.UserRepository;
 import com.trinetra.service.ComplaintService;
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -40,23 +38,27 @@ public class SuperAdminController {
     private final ComplaintService complaintService;
 
     @PostMapping("/create-admin")
-    public ResponseEntity<AdminAccountResponse> createAdmin(@Valid @RequestBody CreateAdminRequest request) {
-        String email = request.getEmail().trim().toLowerCase();
-        if (!StringUtils.hasText(request.getName())) {
-            throw new BadRequestException("Name is required");
+    public ResponseEntity<?> createAdmin(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        String password = request.get("password");
+
+        if (!StringUtils.hasText(email) || !StringUtils.hasText(password)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email and password required"));
         }
+
+        email = email.trim().toLowerCase();
         if (adminUserRepository.existsByUsernameIgnoreCase(email) || userRepository.existsByEmail(email)) {
-            throw new BadRequestException("Email already registered");
+            return ResponseEntity.badRequest().body(Map.of("message", "Admin already exists"));
         }
 
         AdminUser admin = AdminUser.builder()
                 .username(email)
-                .password(passwordEncoder.encode(request.getPassword()))
+                .password(passwordEncoder.encode(password))
                 .role("ADMIN")
                 .build();
 
-        AdminUser saved = adminUserRepository.save(admin);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(saved));
+        adminUserRepository.save(admin);
+        return ResponseEntity.ok(Map.of("message", "Admin created successfully"));
     }
 
     @GetMapping("/admins")
@@ -101,10 +103,10 @@ public class SuperAdminController {
     private AdminAccountResponse toResponse(AdminUser admin) {
         return AdminAccountResponse.builder()
                 .id(admin.getId())
-                .email(admin.getUsername())
+                .username(admin.getUsername())
                 .role(admin.getRole())
-            .active(!"DISABLED_ADMIN".equalsIgnoreCase(admin.getRole()))
-            .createdAt(null)
+                .active(!"DISABLED_ADMIN".equalsIgnoreCase(admin.getRole()))
+                .createdAt(null)
                 .build();
     }
 }

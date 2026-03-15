@@ -10,7 +10,7 @@ import lombok.Getter;
 public class AdminAccountResponse {
 
     private UUID id;
-    private String email;
+    private String username;
     private String role;
     private boolean active;
     private LocalDateTime createdAt;
