@@ -37,7 +37,7 @@ public class ReportService {
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
                 .category(request.getCategory().name())
-                .status(ComplaintStatus.PENDING.name())
+                .status(ComplaintStatus.SUBMITTED.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
                 .userId(anonymous ? null : authenticatedUserId)

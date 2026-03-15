@@ -58,7 +58,7 @@ public class ComplaintService {
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
             .category(complaintCategory.name())
-                .status(ComplaintStatus.PENDING.name())
+                .status(ComplaintStatus.SUBMITTED.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
             .userId(submittedByUserId)
@@ -197,7 +197,7 @@ public class ComplaintService {
     public AdminStatsResponse getAdminStats() {
         return AdminStatsResponse.builder()
                 .totalComplaints(complaintRepository.count())
-                .pendingComplaints(complaintRepository.countByStatus(ComplaintStatus.PENDING.name())
+                .pendingComplaints(complaintRepository.countByStatus(ComplaintStatus.SUBMITTED.name())
                         + complaintRepository.countByStatus(ComplaintStatus.UNDER_REVIEW.name())
                         + complaintRepository.countByStatus(ComplaintStatus.INVESTIGATING.name())
                         + complaintRepository.countByStatus("SUBMITTED"))

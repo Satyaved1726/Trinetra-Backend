@@ -70,7 +70,7 @@ public class Complaint {
     @PrePersist
     void onCreate() {
         if (status == null) {
-            status = ComplaintStatus.PENDING.name();
+            status = ComplaintStatus.SUBMITTED.name();
         }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
