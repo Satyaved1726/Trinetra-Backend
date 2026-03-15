@@ -40,10 +40,10 @@ public class Evidence {
     @Column(name = "file_url", nullable = false, length = 1024)
     private String fileUrl;
 
-    @Column(name = "file_type", nullable = false, length = 120)
+    @Column(name = "type", nullable = false, length = 120)
     private String fileType;
 
-    @Column(name = "uploaded_at", nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime uploadedAt;
 
     @PrePersist
