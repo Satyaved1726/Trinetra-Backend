@@ -80,6 +80,63 @@ public class ComplaintService {
     }
 
     @Transactional
+    public ComplaintSubmissionResponse submitComplaintWithFiles(
+            ComplaintRequest request,
+            List<MultipartFile> files,
+            String userEmail) {
+        boolean anonymous = Boolean.TRUE.equals(request.getAnonymous());
+        UUID submittedByUserId = null;
+        String anonymousToken = null;
+
+        if (anonymous) {
+            anonymousToken = UUID.randomUUID().toString();
+        } else {
+            if (userEmail == null || userEmail.isBlank()) {
+                throw new UnauthorizedException("Authentication required for non-anonymous complaint submission");
+            }
+            User user = userRepository.findByEmail(normalizeEmail(userEmail))
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+            submittedByUserId = user.getId();
+        }
+
+        Complaint complaint = Complaint.builder()
+                .title(request.getTitle().trim())
+                .description(request.getDescription().trim())
+                .category(request.getCategory().name())
+                .status(ComplaintStatus.PENDING.name())
+                .anonymous(anonymous)
+                .trackingId(generateTrackingId())
+                .userId(submittedByUserId)
+                .anonymousToken(anonymousToken)
+                .build();
+
+        complaint = complaintRepository.save(complaint);
+
+        if (files != null) {
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) continue;
+                Map<String, String> stored = fileStorageService.storeFile(file);
+                Evidence evidence = Evidence.builder()
+                        .complaint(complaint)
+                        .fileUrl(stored.get("fileUrl"))
+                        .fileType(stored.get("fileType"))
+                        .build();
+                evidenceRepository.save(evidence);
+                if (complaint.getEvidenceUrl() == null) {
+                    complaint.setEvidenceUrl(stored.get("fileUrl"));
+                    complaintRepository.save(complaint);
+                }
+            }
+        }
+
+        return ComplaintSubmissionResponse.builder()
+                .message("Complaint submitted successfully")
+                .trackingId(complaint.getTrackingId())
+                .anonymousToken(complaint.getAnonymousToken())
+                .build();
+    }
+
+    @Transactional
     public Map<String, String> submitComplaintMultipart(
             String title,
             String description,

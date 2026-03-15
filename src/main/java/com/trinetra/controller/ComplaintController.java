@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -72,15 +73,15 @@ public class ComplaintController {
     }
 
     // POST /api/complaints/submit — authenticated employee submit (legacy)
-    @PostMapping("/submit")
-    public ResponseEntity<ComplaintSubmissionResponse> submitComplaintLegacy(
-            @Valid @RequestBody ComplaintRequest request,
-            Principal principal
+    // POST /api/complaints/submit — multipart submit with optional evidence files
+    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ComplaintSubmissionResponse> submitComplaint(
+            @RequestPart("data") @Valid ComplaintRequest request,
+            @RequestPart(value = "files", required = false) List<MultipartFile> files,
+            Authentication authentication
     ) {
-        ComplaintSubmissionResponse response = complaintService.submitComplaint(
-            request,
-            principal != null ? principal.getName() : null
-        );
+        String userEmail = authentication != null ? authentication.getName() : null;
+        ComplaintSubmissionResponse response = complaintService.submitComplaintWithFiles(request, files, userEmail);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
