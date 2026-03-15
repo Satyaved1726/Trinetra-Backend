@@ -45,7 +45,7 @@ public class AuthController {
                 return ResponseEntity.badRequest().body(Map.of("message", "Name is required"));
             }
 
-            if (userRepository.existsByEmail(email) || adminUserRepository.existsByUsernameIgnoreCase(email)) {
+            if (userRepository.existsByEmail(email)) {
                 return ResponseEntity.badRequest()
                         .body(Map.of("message", "Email already registered"));
             }
