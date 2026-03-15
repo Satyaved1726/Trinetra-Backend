@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface EvidenceRepository extends JpaRepository<Evidence, UUID> {
 
-    List<Evidence> findByComplaintIdOrderByUploadedAtAsc(UUID complaintId);
+    List<Evidence> findByComplaintIdOrderByCreatedAtAsc(UUID complaintId);
 }

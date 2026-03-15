@@ -78,7 +78,7 @@ public class ComplaintService {
                         : file.getType().trim();
 
                 Evidence evidence = Evidence.builder()
-                        .complaint(saved)
+                    .complaintId(saved.getId())
                         .fileUrl(file.getUrl().trim())
                         .fileType(fileType)
                         .build();
