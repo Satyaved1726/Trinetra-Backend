@@ -3,6 +3,7 @@ package com.trinetra.security;
 import com.trinetra.model.AdminUser;
 import com.trinetra.model.User;
 import com.trinetra.repository.AdminUserRepository;
+import com.trinetra.repository.UserAccessControlRepository;
 import com.trinetra.repository.UserRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
     private final AdminUserRepository adminUserRepository;
+    private final UserAccessControlRepository userAccessControlRepository;
 
     @Override
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
@@ -39,6 +41,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         // Fall back to users table by email
         User user = userRepository.findByEmail(identifier)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        boolean blocked = userAccessControlRepository.findByUserId(user.getId())
+            .map(access -> access.isBlocked())
+            .orElse(false);
+        if (blocked) {
+            throw new UsernameNotFoundException("User account is blocked");
+        }
 
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getEmail())

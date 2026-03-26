@@ -211,7 +211,7 @@ public class ComplaintService {
     public AdminAnalyticsResponse getAdminAnalytics() {
         List<Complaint> complaints = complaintRepository.findAll();
 
-        Map<String, Long> monthlyComplaints = complaints.stream()
+        Map<String, Long> complaintsOverTime = complaints.stream()
                 .collect(Collectors.groupingBy(
                         c -> c.getCreatedAt().getYear() + "-" + String.format("%02d", c.getCreatedAt().getMonthValue()),
                         Collectors.counting()
@@ -220,15 +220,30 @@ public class ComplaintService {
         Map<String, Long> categoryStats = complaints.stream()
                 .collect(Collectors.groupingBy(Complaint::getCategory, Collectors.counting()));
 
+        Map<String, Long> statusStats = complaints.stream()
+            .collect(Collectors.groupingBy(Complaint::getStatus, Collectors.counting()));
+
         long resolved = complaints.stream()
                 .filter(c -> ComplaintStatus.RESOLVED.name().equalsIgnoreCase(c.getStatus()))
                 .count();
 
+        long open = complaints.stream()
+            .filter(c -> !ComplaintStatus.RESOLVED.name().equalsIgnoreCase(c.getStatus())
+                && !ComplaintStatus.REJECTED.name().equalsIgnoreCase(c.getStatus()))
+            .count();
+
+        long anonymous = complaints.stream()
+            .filter(c -> Boolean.TRUE.equals(c.getAnonymous()))
+            .count();
+
         return AdminAnalyticsResponse.builder()
                 .totalComplaints(complaints.size())
+            .openComplaints(open)
                 .resolvedComplaints(resolved)
-                .monthlyComplaints(monthlyComplaints)
-                .categoryStats(categoryStats)
+            .anonymousComplaints(anonymous)
+            .complaintsByCategory(categoryStats)
+            .complaintsByStatus(statusStats)
+            .complaintsOverTime(complaintsOverTime)
                 .build();
     }
 

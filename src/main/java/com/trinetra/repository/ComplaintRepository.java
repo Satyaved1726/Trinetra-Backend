@@ -1,14 +1,16 @@
 package com.trinetra.repository;
 
 import com.trinetra.model.Complaint;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
+public interface ComplaintRepository extends JpaRepository<Complaint, UUID>, JpaSpecificationExecutor<Complaint> {
 
     List<Complaint> findByUserId(UUID userId);
 
@@ -31,6 +33,10 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID> {
     boolean existsByTrackingId(String trackingId);
 
     long countByStatus(String status);
+
+    long countByAnonymousTrue();
+
+    List<Complaint> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to);
 
     long countByTrackingIdStartingWith(String prefix);
 }

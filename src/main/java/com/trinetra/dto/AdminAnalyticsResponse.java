@@ -9,7 +9,10 @@ import lombok.Getter;
 public class AdminAnalyticsResponse {
 
     private long totalComplaints;
+    private long openComplaints;
     private long resolvedComplaints;
-    private Map<String, Long> monthlyComplaints;
-    private Map<String, Long> categoryStats;
+    private long anonymousComplaints;
+    private Map<String, Long> complaintsByCategory;
+    private Map<String, Long> complaintsByStatus;
+    private Map<String, Long> complaintsOverTime;
 }
