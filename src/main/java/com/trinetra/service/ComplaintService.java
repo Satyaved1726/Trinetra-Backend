@@ -7,6 +7,7 @@ import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
 import com.trinetra.dto.EvidenceDTO;
+import com.trinetra.dto.EvidenceFileResponse;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.exception.ComplaintNotFoundException;
 import com.trinetra.exception.UnauthorizedException;
@@ -161,7 +162,7 @@ public class ComplaintService {
 
     @Transactional(readOnly = true)
     public List<ComplaintResponse> getAllComplaints() {
-        return complaintRepository.findAllByOrderByCreatedAtDesc()
+        return complaintRepository.findAllWithEvidence()
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -169,7 +170,7 @@ public class ComplaintService {
 
     @Transactional(readOnly = true)
     public ComplaintResponse getComplaintById(UUID id) {
-        Complaint complaint = complaintRepository.findById(id)
+        Complaint complaint = complaintRepository.findByIdWithEvidence(id)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
         return toResponse(complaint);
     }
@@ -240,6 +241,17 @@ public class ComplaintService {
     }
 
     private ComplaintResponse toResponse(Complaint complaint) {
+        List<EvidenceFileResponse> evidenceFiles = complaint.getEvidenceFiles() == null
+            ? List.of()
+            : complaint.getEvidenceFiles().stream()
+            .map(evidence -> EvidenceFileResponse.builder()
+                .id(evidence.getId())
+                .fileUrl(evidence.getFileUrl())
+                .fileType(evidence.getFileType())
+                .uploadedAt(evidence.getUploadedAt())
+                .build())
+            .toList();
+
         return ComplaintResponse.builder()
                 .id(complaint.getId())
                 .trackingId(complaint.getTrackingId())
@@ -253,6 +265,7 @@ public class ComplaintService {
                 .userId(complaint.getUserId())
                 .createdBy(complaint.getUserId())
                 .adminId(complaint.getAdmin() != null ? complaint.getAdmin().getId() : null)
+                .evidenceFiles(evidenceFiles)
                 .build();
     }
 

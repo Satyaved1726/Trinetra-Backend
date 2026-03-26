@@ -3,6 +3,7 @@ package com.trinetra.dto;
 import com.trinetra.model.ComplaintCategory;
 import com.trinetra.model.ComplaintStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,4 +24,5 @@ public class ComplaintResponse {
     private UUID userId;
     private UUID createdBy;
     private UUID adminId;
+    private List<EvidenceFileResponse> evidenceFiles;
 }
