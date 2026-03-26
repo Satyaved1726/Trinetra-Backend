@@ -7,5 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ComplaintCommentRepository extends JpaRepository<ComplaintComment, UUID> {
 
-    List<ComplaintComment> findByComplaintIdOrderByCreatedAtAsc(UUID complaintId);
+    List<ComplaintComment> findByComplaint_IdOrderByCreatedAtAsc(UUID complaintId);
 }

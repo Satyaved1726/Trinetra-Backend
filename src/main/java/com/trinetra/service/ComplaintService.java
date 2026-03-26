@@ -1,9 +1,12 @@
 package com.trinetra.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trinetra.dto.AdminStatsResponse;
 import com.trinetra.dto.AdminAnalyticsResponse;
 import com.trinetra.dto.ComplaintRequest;
 import com.trinetra.dto.ComplaintResponse;
+import com.trinetra.dto.ComplaintStatusHistoryEntry;
 import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
 import com.trinetra.dto.EvidenceDTO;
@@ -14,6 +17,7 @@ import com.trinetra.exception.UnauthorizedException;
 import com.trinetra.exception.UserNotFoundException;
 import com.trinetra.model.Complaint;
 import com.trinetra.model.ComplaintCategory;
+import com.trinetra.model.ComplaintPriority;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.model.Evidence;
 import com.trinetra.model.User;
@@ -21,26 +25,31 @@ import com.trinetra.repository.ComplaintRepository;
 import com.trinetra.repository.EvidenceRepository;
 import com.trinetra.repository.UserRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
     private final EvidenceRepository evidenceRepository;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public ComplaintSubmissionResponse submitComplaint(ComplaintRequest request, String userEmail) {
         boolean anonymous = Boolean.TRUE.equals(request.getIsAnonymous());
         ComplaintCategory complaintCategory = parseCategory(request.getCategory());
+        ComplaintPriority complaintPriority = parsePriority(request.getPriority());
         UUID submittedByUserId = null;
         String anonymousToken = null;
 
@@ -59,11 +68,17 @@ public class ComplaintService {
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
             .category(complaintCategory.name())
+                .priority(complaintPriority.name())
                 .status(ComplaintStatus.SUBMITTED.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
             .userId(submittedByUserId)
             .anonymousToken(anonymousToken)
+                .statusHistory(writeStatusHistory(List.of(ComplaintStatusHistoryEntry.builder()
+                        .status(ComplaintStatus.SUBMITTED.name())
+                        .changedBy(submittedByUserId == null ? "anonymous" : submittedByUserId.toString())
+                        .changedAt(LocalDateTime.now())
+                        .build())))
                 .build();
 
         Complaint saved = complaintRepository.save(complaint);
@@ -182,7 +197,22 @@ public class ComplaintService {
         }
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
+
+        ComplaintStatus currentStatus = ComplaintStatus.from(complaint.getStatus());
+        if (!currentStatus.canTransitionTo(status)) {
+            log.warn(
+                    "Invalid complaint status transition requested. complaintId={}, currentStatus={}, requestedStatus={}",
+                    complaintId,
+                    currentStatus,
+                    status
+            );
+            throw new BadRequestException(
+                    "Invalid status transition: " + currentStatus.name() + " -> " + status.name()
+            );
+        }
+
         complaint.setStatus(status.name());
+        appendStatusHistory(complaint, status, "system");
         return toResponse(complaintRepository.save(complaint));
     }
 
@@ -274,14 +304,50 @@ public class ComplaintService {
                 .title(complaint.getTitle())
                 .description(complaint.getDescription())
                 .category(ComplaintCategory.from(complaint.getCategory()))
+                .priority(ComplaintPriority.from(complaint.getPriority()))
                 .status(ComplaintStatus.from(complaint.getStatus()))
+                .assignedTo(complaint.getAssignedTo())
                 .createdAt(complaint.getCreatedAt())
+                .updatedAt(complaint.getUpdatedAt())
                 .anonymous(Boolean.TRUE.equals(complaint.getAnonymous()))
                 .userId(complaint.getUserId())
                 .createdBy(complaint.getUserId())
                 .adminId(complaint.getAdmin() != null ? complaint.getAdmin().getId() : null)
                 .evidenceFiles(evidenceFiles)
+                .statusHistory(readStatusHistory(complaint.getStatusHistory()))
+                .notes(List.of())
                 .build();
+    }
+
+    private void appendStatusHistory(Complaint complaint, ComplaintStatus nextStatus, String actor) {
+        List<ComplaintStatusHistoryEntry> history = readStatusHistory(complaint.getStatusHistory());
+        history.add(ComplaintStatusHistoryEntry.builder()
+                .status(nextStatus.name())
+                .changedBy(actor == null || actor.isBlank() ? "system" : actor)
+                .changedAt(LocalDateTime.now())
+                .build());
+        complaint.setStatusHistory(writeStatusHistory(history));
+    }
+
+    private List<ComplaintStatusHistoryEntry> readStatusHistory(String rawJson) {
+        if (rawJson == null || rawJson.isBlank()) {
+            return new ArrayList<>();
+        }
+        try {
+            return new ArrayList<>(objectMapper.readValue(rawJson, new TypeReference<List<ComplaintStatusHistoryEntry>>() {
+            }));
+        } catch (Exception ex) {
+            log.warn("Failed to parse complaint status history. rawJson={}", rawJson, ex);
+            return new ArrayList<>();
+        }
+    }
+
+    private String writeStatusHistory(List<ComplaintStatusHistoryEntry> history) {
+        try {
+            return objectMapper.writeValueAsString(history);
+        } catch (Exception ex) {
+            throw new BadRequestException("Unable to persist status history");
+        }
     }
 
     private String generateTrackingId() {
@@ -306,6 +372,14 @@ public class ComplaintService {
         }
         try {
             return ComplaintCategory.from(category.trim());
+        } catch (IllegalArgumentException ex) {
+            throw new BadRequestException(ex.getMessage());
+        }
+    }
+
+    private ComplaintPriority parsePriority(String priority) {
+        try {
+            return ComplaintPriority.from(priority);
         } catch (IllegalArgumentException ex) {
             throw new BadRequestException(ex.getMessage());
         }

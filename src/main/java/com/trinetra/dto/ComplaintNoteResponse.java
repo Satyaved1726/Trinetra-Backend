@@ -13,6 +13,7 @@ public class ComplaintNoteResponse {
     private UUID complaintId;
     private UUID userId;
     private String author;
+    private String createdBy;
     private String note;
     private LocalDateTime createdAt;
 }

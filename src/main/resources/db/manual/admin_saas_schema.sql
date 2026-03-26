@@ -1,6 +1,47 @@
 -- Admin SaaS schema additions for PostgreSQL/Supabase
 -- Run this script before deploying the new admin APIs when ddl-auto is disabled.
 
+ALTER TABLE complaints
+    ADD COLUMN IF NOT EXISTS priority varchar(20) NOT NULL DEFAULT 'MEDIUM';
+
+ALTER TABLE complaints
+    ADD COLUMN IF NOT EXISTS assigned_to varchar(120) NULL;
+
+ALTER TABLE complaints
+    ADD COLUMN IF NOT EXISTS status_history jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+ALTER TABLE complaints
+    ADD COLUMN IF NOT EXISTS updated_at timestamp without time zone NOT NULL DEFAULT now();
+
+CREATE TABLE IF NOT EXISTS complaint_comments (
+    id uuid PRIMARY KEY,
+    complaint_id uuid NOT NULL,
+    user_id uuid NULL,
+    created_by varchar(120) NOT NULL,
+    note text NOT NULL,
+    created_at timestamp without time zone NOT NULL DEFAULT now(),
+    CONSTRAINT fk_complaint_comments_complaint
+        FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
+);
+
+ALTER TABLE complaint_comments
+    ADD COLUMN IF NOT EXISTS created_by varchar(120);
+
+ALTER TABLE complaint_comments
+    ADD COLUMN IF NOT EXISTS note text;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'complaint_comments' AND column_name = 'comment'
+    ) THEN
+        EXECUTE 'UPDATE complaint_comments SET note = comment WHERE note IS NULL';
+    END IF;
+END
+$$;
+
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id uuid PRIMARY KEY,
     complaint_id uuid NULL,
@@ -38,5 +79,14 @@ CREATE INDEX IF NOT EXISTS idx_complaints_category_created
 CREATE INDEX IF NOT EXISTS idx_complaints_created_at
     ON complaints (created_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_complaints_assigned_to
+    ON complaints (assigned_to);
+
+CREATE INDEX IF NOT EXISTS idx_complaints_priority_created
+    ON complaints (priority, created_at DESC);
+
 CREATE INDEX IF NOT EXISTS idx_complaint_evidence_files_complaint_uploaded
     ON complaint_evidence_files (complaint_id, uploaded_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_complaint_comments_complaint_created
+    ON complaint_comments (complaint_id, created_at DESC);

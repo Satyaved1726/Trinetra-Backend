@@ -7,11 +7,9 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ComplaintNoteRequest {
+public class ComplaintAssignRequest {
 
-    @NotBlank(message = "Note is required")
-    private String note;
-
-    @JsonAlias({"createdBy"})
-    private String createdBy;
+    @NotBlank(message = "assigned_to is required")
+    @JsonAlias({"assignedTo"})
+    private String assignedTo;
 }

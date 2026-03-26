@@ -36,11 +36,14 @@ public class ComplaintComment {
     @JoinColumn(name = "complaint_id", nullable = false)
     private Complaint complaint;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private UUID userId;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String comment;
+    @Column(name = "created_by", nullable = false, length = 120)
+    private String createdBy;
+
+    @Column(name = "note", nullable = false, columnDefinition = "TEXT")
+    private String note;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;

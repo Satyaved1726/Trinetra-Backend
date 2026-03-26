@@ -26,5 +26,8 @@ public class ComplaintRequest {
     @JsonAlias({"anonymous"})
     private Boolean isAnonymous;
 
+    @JsonAlias({"priority_level", "priorityLevel"})
+    private String priority;
+
     private List<EvidenceDTO> evidenceFiles = new ArrayList<>();
 }

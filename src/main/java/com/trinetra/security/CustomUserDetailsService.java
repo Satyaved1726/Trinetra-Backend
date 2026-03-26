@@ -28,7 +28,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (adminOpt.isPresent()) {
             AdminUser admin = adminOpt.get();
             String role = admin.getRole() == null ? "" : admin.getRole().toUpperCase();
-            if (!"ADMIN".equals(role) && !"SUPER_ADMIN".equals(role)) {
+            if (!"ADMIN".equals(role) && !"SUPER_ADMIN".equals(role) && !"OFFICER".equals(role)) {
                 throw new UsernameNotFoundException("Admin account is inactive");
             }
             return org.springframework.security.core.userdetails.User.builder()

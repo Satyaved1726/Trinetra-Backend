@@ -41,12 +41,12 @@ public class GlobalExceptionHandler {
         return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage(), request, null);
     }
 
-    @ExceptionHandler({BadRequestException.class, HttpMessageNotReadableException.class, MultipartException.class})
+    @ExceptionHandler({BadRequestException.class, HttpMessageNotReadableException.class, MultipartException.class, IllegalArgumentException.class})
     public ResponseEntity<ApiErrorResponse> handleBadRequest(Exception ex, HttpServletRequest request) {
         String message = ex instanceof HttpMessageNotReadableException
                 ? "Invalid request payload"
                 : ex.getMessage();
-        log.warn("Bad request at {}: {}", request.getRequestURI(), message);
+        log.warn("Bad request at {}: {} ({})", request.getRequestURI(), message, ex.getClass().getSimpleName());
         return buildResponse(HttpStatus.BAD_REQUEST, message, request, null);
     }
 

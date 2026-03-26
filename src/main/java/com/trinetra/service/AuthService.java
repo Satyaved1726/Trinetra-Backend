@@ -74,7 +74,7 @@ public class AuthService {
             AdminUser admin = adminOpt.get();
             return AuthResponse.builder()
                     .jwtToken(jwtUtil.generateToken(admin.getUsername()))
-                    .role(Role.ADMIN)
+                    .role(mapAdminRole(admin.getRole()))
                     .userId(admin.getId().toString())
                     .build();
         }
@@ -92,5 +92,16 @@ public class AuthService {
                 .role(user.getRole())
                 .userId(user.getId().toString())
                 .build();
+    }
+
+    private Role mapAdminRole(String adminRole) {
+        if (adminRole == null || adminRole.isBlank()) {
+            return Role.ADMIN;
+        }
+        try {
+            return Role.valueOf(adminRole.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return Role.ADMIN;
+        }
     }
 }

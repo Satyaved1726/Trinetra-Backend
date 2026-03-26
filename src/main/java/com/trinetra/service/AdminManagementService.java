@@ -1,5 +1,7 @@
 package com.trinetra.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trinetra.dto.AdminAnalyticsResponse;
 import com.trinetra.dto.AdminAssignRequest;
 import com.trinetra.dto.AdminComplaintsPageResponse;
@@ -9,6 +11,7 @@ import com.trinetra.dto.AdminUsersPageResponse;
 import com.trinetra.dto.AuditLogResponse;
 import com.trinetra.dto.ComplaintNoteRequest;
 import com.trinetra.dto.ComplaintNoteResponse;
+import com.trinetra.dto.ComplaintStatusHistoryEntry;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintTimelineEventResponse;
 import com.trinetra.dto.EvidenceFileResponse;
@@ -21,6 +24,7 @@ import com.trinetra.model.AuditLog;
 import com.trinetra.model.Complaint;
 import com.trinetra.model.ComplaintCategory;
 import com.trinetra.model.ComplaintComment;
+import com.trinetra.model.ComplaintPriority;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.model.Evidence;
 import com.trinetra.model.User;
@@ -42,6 +46,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -53,6 +58,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AdminManagementService {
 
     private static final Set<String> OPEN_STATUSES = Set.of(
@@ -69,6 +75,7 @@ public class AdminManagementService {
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
     private final UserAccessControlRepository userAccessControlRepository;
+        private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public AdminAnalyticsResponse getAnalytics() {
@@ -110,6 +117,7 @@ public class AdminManagementService {
     public AdminComplaintsPageResponse getComplaints(
             String status,
             String category,
+                        String priority,
             String search,
             LocalDate fromDate,
             LocalDate toDate,
@@ -117,7 +125,7 @@ public class AdminManagementService {
             int size
     ) {
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), Sort.by(Sort.Direction.DESC, "createdAt"));
-        Specification<Complaint> spec = buildComplaintSpec(status, category, search, fromDate, toDate);
+                Specification<Complaint> spec = buildComplaintSpec(status, category, priority, search, fromDate, toDate);
 
         Page<Complaint> complaintPage = complaintRepository.findAll(spec, pageable);
         List<Complaint> complaints = complaintPage.getContent();
@@ -130,7 +138,7 @@ public class AdminManagementService {
                 .collect(Collectors.groupingBy(e -> e.getComplaint().getId()));
 
         List<ComplaintResponse> content = complaints.stream()
-                .map(c -> toComplaintResponse(c, evidenceMap.getOrDefault(c.getId(), List.of())))
+                .map(c -> toComplaintResponse(c, evidenceMap.getOrDefault(c.getId(), List.of()), List.of()))
                 .toList();
 
         return AdminComplaintsPageResponse.builder()
@@ -142,6 +150,16 @@ public class AdminManagementService {
                 .build();
     }
 
+        @Transactional(readOnly = true)
+        public ComplaintResponse getComplaintDetails(UUID complaintId) {
+                Complaint complaint = complaintRepository.findByIdWithEvidence(complaintId)
+                                .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
+
+                List<ComplaintNoteResponse> notes = getNotes(complaintId);
+                List<Evidence> evidenceList = complaint.getEvidenceFiles() == null ? List.of() : complaint.getEvidenceFiles();
+                return toComplaintResponse(complaint, evidenceList, notes);
+        }
+
     @Transactional
     public ComplaintResponse updateComplaintStatus(UUID complaintId, ComplaintStatus status, String actor) {
         if (status == null) {
@@ -151,13 +169,19 @@ public class AdminManagementService {
         Complaint complaint = complaintRepository.findByIdWithEvidence(complaintId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
-        String oldStatus = complaint.getStatus();
+                ComplaintStatus currentStatus = ComplaintStatus.from(complaint.getStatus());
+                if (!currentStatus.canTransitionTo(status)) {
+                        throw new BadRequestException("Invalid status transition: " + currentStatus.name() + " -> " + status.name());
+                }
+
+                String oldStatus = currentStatus.name();
         complaint.setStatus(status.name());
+                appendStatusHistory(complaint, status, actor);
         Complaint saved = complaintRepository.save(complaint);
 
         writeAudit(saved.getId(), "STATUS_UPDATED", actor, "Status changed from " + oldStatus + " to " + status.name());
 
-        return toComplaintResponse(saved, saved.getEvidenceFiles() == null ? List.of() : saved.getEvidenceFiles());
+                return toComplaintResponse(saved, saved.getEvidenceFiles() == null ? List.of() : saved.getEvidenceFiles(), List.of());
     }
 
     @Transactional
@@ -165,21 +189,30 @@ public class AdminManagementService {
         Complaint complaint = complaintRepository.findByIdWithEvidence(complaintId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
-        AdminUser assignee;
-        if (request != null && request.getAdminId() != null) {
-            assignee = adminUserRepository.findById(request.getAdminId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
-        } else {
-            assignee = adminUserRepository.findByUsernameIgnoreCase(actor)
-                    .orElseThrow(() -> new ResourceNotFoundException("Acting admin not found"));
-        }
+                String assignedTo = request == null ? null : request.getAssignedTo();
+                AdminUser assignee = null;
 
-        complaint.setAdmin(assignee);
+                if (assignedTo != null && !assignedTo.isBlank()) {
+                        assignedTo = assignedTo.trim();
+                        assignee = resolveAdminByIdentifier(assignedTo);
+                } else if (request != null && request.getAdminId() != null) {
+                        assignee = adminUserRepository.findById(request.getAdminId())
+                                        .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+                        assignedTo = assignee.getId().toString();
+                } else {
+                        throw new BadRequestException("assigned_to is required");
+                }
+
+                if (assignee != null) {
+                        complaint.setAdmin(assignee);
+                }
+                complaint.setAssignedTo(assignedTo);
+
         Complaint saved = complaintRepository.save(complaint);
 
-        writeAudit(saved.getId(), "ASSIGNED", actor, "Complaint assigned to admin " + assignee.getUsername());
+                writeAudit(saved.getId(), "ASSIGNED", actor, "Complaint assigned to " + assignedTo);
 
-        return toComplaintResponse(saved, saved.getEvidenceFiles() == null ? List.of() : saved.getEvidenceFiles());
+                return toComplaintResponse(saved, saved.getEvidenceFiles() == null ? List.of() : saved.getEvidenceFiles(), List.of());
     }
 
     @Transactional(readOnly = true)
@@ -226,12 +259,17 @@ public class AdminManagementService {
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
         AdminUser admin = adminUserRepository.findByUsernameIgnoreCase(actor)
-                .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
+                .orElse(null);
+
+        String createdBy = request.getCreatedBy() != null && !request.getCreatedBy().isBlank()
+                ? request.getCreatedBy().trim()
+                : actor;
 
         ComplaintComment note = ComplaintComment.builder()
                 .complaint(complaint)
-                .userId(admin.getId())
-                .comment(request.getNote().trim())
+                .userId(admin == null ? null : admin.getId())
+                .createdBy(createdBy)
+                .note(request.getNote().trim())
                 .build();
 
         ComplaintComment saved = complaintCommentRepository.save(note);
@@ -241,16 +279,21 @@ public class AdminManagementService {
                 .id(saved.getId())
                 .complaintId(complaintId)
                 .userId(saved.getUserId())
-                .author(admin.getUsername())
-                .note(saved.getComment())
+                .author(admin == null ? createdBy : admin.getUsername())
+                .createdBy(saved.getCreatedBy())
+                .note(saved.getNote())
                 .createdAt(saved.getCreatedAt())
                 .build();
     }
 
     @Transactional(readOnly = true)
     public List<ComplaintNoteResponse> getNotes(UUID complaintId) {
-        List<ComplaintComment> comments = complaintCommentRepository.findByComplaintIdOrderByCreatedAtAsc(complaintId);
-        List<UUID> authorIds = comments.stream().map(ComplaintComment::getUserId).distinct().toList();
+        List<ComplaintComment> comments = complaintCommentRepository.findByComplaint_IdOrderByCreatedAtAsc(complaintId);
+        List<UUID> authorIds = comments.stream()
+                .map(ComplaintComment::getUserId)
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
 
         Map<UUID, String> authorMap = adminUserRepository.findAllById(authorIds).stream()
                 .collect(Collectors.toMap(AdminUser::getId, AdminUser::getUsername));
@@ -260,8 +303,9 @@ public class AdminManagementService {
                         .id(note.getId())
                         .complaintId(note.getComplaint().getId())
                         .userId(note.getUserId())
-                        .author(authorMap.getOrDefault(note.getUserId(), "unknown"))
-                        .note(note.getComment())
+                        .author(authorMap.getOrDefault(note.getUserId(), note.getCreatedBy()))
+                        .createdBy(note.getCreatedBy())
+                        .note(note.getNote())
                         .createdAt(note.getCreatedAt())
                         .build())
                 .toList();
@@ -364,6 +408,7 @@ public class AdminManagementService {
     private Specification<Complaint> buildComplaintSpec(
             String status,
             String category,
+            String priority,
             String search,
             LocalDate fromDate,
             LocalDate toDate
@@ -383,13 +428,28 @@ public class AdminManagementService {
                 }
                 predicates.add(cb.equal(cb.upper(root.get("category")), normalizedCategory.toUpperCase()));
             }
+                        if (priority != null && !priority.isBlank()) {
+                                String normalizedPriority;
+                                try {
+                                        normalizedPriority = ComplaintPriority.from(priority.trim()).name();
+                                } catch (IllegalArgumentException ex) {
+                                        throw new BadRequestException(ex.getMessage());
+                                }
+                                predicates.add(cb.equal(cb.upper(root.get("priority")), normalizedPriority.toUpperCase()));
+                        }
             if (search != null && !search.isBlank()) {
                 String keyword = "%" + search.trim().toLowerCase() + "%";
-                predicates.add(cb.or(
-                        cb.like(cb.lower(root.get("title")), keyword),
-                        cb.like(cb.lower(root.get("description")), keyword),
-                        cb.like(cb.lower(root.get("trackingId")), keyword)
-                ));
+                                List<jakarta.persistence.criteria.Predicate> searchPredicates = new ArrayList<>();
+                                searchPredicates.add(cb.like(cb.lower(root.get("title")), keyword));
+                                searchPredicates.add(cb.like(cb.lower(root.get("description")), keyword));
+                                searchPredicates.add(cb.like(cb.lower(root.get("trackingId")), keyword));
+                                try {
+                                        UUID idFilter = UUID.fromString(search.trim());
+                                        searchPredicates.add(cb.equal(root.get("id"), idFilter));
+                                } catch (IllegalArgumentException ignored) {
+                                        // Search can be either keyword or UUID.
+                                }
+                                predicates.add(cb.or(searchPredicates.toArray(new jakarta.persistence.criteria.Predicate[0])));
             }
             if (fromDate != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), fromDate.atStartOfDay()));
@@ -402,7 +462,11 @@ public class AdminManagementService {
         };
     }
 
-    private ComplaintResponse toComplaintResponse(Complaint complaint, List<Evidence> evidenceList) {
+    private ComplaintResponse toComplaintResponse(
+            Complaint complaint,
+            List<Evidence> evidenceList,
+            List<ComplaintNoteResponse> notes
+    ) {
         List<EvidenceFileResponse> evidenceFiles = evidenceList.stream()
                 .map(e -> EvidenceFileResponse.builder()
                         .id(e.getId())
@@ -419,15 +483,59 @@ public class AdminManagementService {
                 .title(complaint.getTitle())
                 .description(complaint.getDescription())
                 .category(ComplaintCategory.from(complaint.getCategory()))
+                                .priority(ComplaintPriority.from(complaint.getPriority()))
                 .status(ComplaintStatus.from(complaint.getStatus()))
+                                .assignedTo(complaint.getAssignedTo())
                 .createdAt(complaint.getCreatedAt())
+                                .updatedAt(complaint.getUpdatedAt())
                 .anonymous(Boolean.TRUE.equals(complaint.getAnonymous()))
                 .userId(complaint.getUserId())
                 .createdBy(complaint.getUserId())
                 .adminId(complaint.getAdmin() == null ? null : complaint.getAdmin().getId())
                 .evidenceFiles(evidenceFiles)
+                                .statusHistory(readStatusHistory(complaint.getStatusHistory()))
+                                .notes(notes)
                 .build();
     }
+
+        private void appendStatusHistory(Complaint complaint, ComplaintStatus nextStatus, String actor) {
+                List<ComplaintStatusHistoryEntry> history = readStatusHistory(complaint.getStatusHistory());
+                history.add(ComplaintStatusHistoryEntry.builder()
+                                .status(nextStatus.name())
+                                .changedBy(actor == null || actor.isBlank() ? "system" : actor)
+                                .changedAt(LocalDateTime.now())
+                                .build());
+                complaint.setStatusHistory(writeStatusHistory(history));
+        }
+
+        private List<ComplaintStatusHistoryEntry> readStatusHistory(String rawJson) {
+                if (rawJson == null || rawJson.isBlank()) {
+                        return new ArrayList<>();
+                }
+                try {
+                        return objectMapper.readValue(rawJson, new TypeReference<List<ComplaintStatusHistoryEntry>>() {
+                        });
+                } catch (Exception ex) {
+                        log.warn("Failed to parse complaint status history. Falling back to empty history. rawJson={}", rawJson, ex);
+                        return new ArrayList<>();
+                }
+        }
+
+        private String writeStatusHistory(List<ComplaintStatusHistoryEntry> history) {
+                try {
+                        return objectMapper.writeValueAsString(history);
+                } catch (Exception ex) {
+                        throw new BadRequestException("Unable to persist status history");
+                }
+        }
+
+        private AdminUser resolveAdminByIdentifier(String assignedTo) {
+                try {
+                        return adminUserRepository.findById(UUID.fromString(assignedTo)).orElse(null);
+                } catch (IllegalArgumentException ex) {
+                        return adminUserRepository.findByUsernameIgnoreCase(assignedTo).orElse(null);
+                }
+        }
 
     private void writeAudit(UUID complaintId, String actionType, String actor, String details) {
         AuditLog log = AuditLog.builder()

@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,6 +54,9 @@ public class Complaint {
     @Column(nullable = false, length = 30)
     private String status;
 
+    @Column(nullable = false, length = 20)
+    private String priority;
+
     @Column(nullable = false, length = 50)
     private String category;
 
@@ -62,11 +66,20 @@ public class Complaint {
     @Column(name = "anonymous_token", length = 80)
     private String anonymousToken;
 
+    @Column(name = "assigned_to", length = 120)
+    private String assignedTo;
+
+    @Column(name = "status_history", nullable = false, columnDefinition = "jsonb")
+    private String statusHistory;
+
     @Column(name = "evidence_url")
     private String evidenceUrl;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     @Column(name = "anonymous", nullable = false)
     private Boolean anonymous;
@@ -80,8 +93,17 @@ public class Complaint {
         if (status == null) {
             status = ComplaintStatus.SUBMITTED.name();
         }
+        if (priority == null || priority.isBlank()) {
+            priority = ComplaintPriority.MEDIUM.name();
+        }
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+        if (statusHistory == null || statusHistory.isBlank()) {
+            statusHistory = "[]";
         }
         if (trackingId == null || trackingId.isBlank()) {
             trackingId = "CMP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
@@ -89,5 +111,10 @@ public class Complaint {
         if (anonymous == null) {
             anonymous = false;
         }
+    }
+
+    @PreUpdate
+    void preUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

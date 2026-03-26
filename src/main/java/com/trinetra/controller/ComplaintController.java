@@ -1,20 +1,28 @@
 package com.trinetra.controller;
 
+import com.trinetra.dto.AdminAssignRequest;
+import com.trinetra.dto.AdminComplaintsPageResponse;
+import com.trinetra.dto.ComplaintAssignRequest;
+import com.trinetra.dto.ComplaintNoteRequest;
+import com.trinetra.dto.ComplaintNoteResponse;
 import com.trinetra.dto.ComplaintRequest;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintSubmissionResponse;
 import com.trinetra.dto.ComplaintTrackingResponse;
+import com.trinetra.dto.StatusUpdateRequest;
 import com.trinetra.dto.TrackComplaintRequest;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.model.ComplaintStatus;
+import com.trinetra.service.AdminManagementService;
 import com.trinetra.service.ComplaintService;
 import jakarta.validation.Valid;
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -27,6 +35,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,6 +45,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ComplaintController {
 
     private final ComplaintService complaintService;
+    private final AdminManagementService adminManagementService;
 
     // POST /api/complaints — authenticated submit (employees or anonymous)
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -83,11 +93,20 @@ public class ComplaintController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // GET /api/complaints — list all complaints (admin)
+    // GET /api/complaints — list complaints with filters (admin/officer)
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
-    public ResponseEntity<List<ComplaintResponse>> getAllComplaints() {
-        return ResponseEntity.ok(complaintService.getAllComplaints());
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
+    public ResponseEntity<AdminComplaintsPageResponse> getAllComplaints(
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "priority", required = false) String priority,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size
+    ) {
+        return ResponseEntity.ok(adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size));
     }
 
     // GET /api/complaints/all — list all complaints (admin, legacy path)
@@ -99,9 +118,9 @@ public class ComplaintController {
 
     // GET /api/complaints/{id} — get single complaint by UUID
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'EMPLOYEE')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER', 'EMPLOYEE')")
     public ResponseEntity<ComplaintResponse> getComplaintById(@PathVariable UUID id) {
-        return ResponseEntity.ok(complaintService.getComplaintById(id));
+        return ResponseEntity.ok(adminManagementService.getComplaintDetails(id));
     }
 
     // GET /api/complaints/track/{trackingId} — public tracking
@@ -125,17 +144,44 @@ public class ComplaintController {
 
     // PUT /api/complaints/{id}/status — update status (admin)
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
     public ResponseEntity<ComplaintResponse> updateComplaintStatus(
             @PathVariable UUID id,
-            @RequestBody java.util.Map<String, String> payload
+            @Valid @RequestBody StatusUpdateRequest request,
+            Principal principal
     ) {
-        String statusValue = payload.get("status");
-        if (statusValue == null || statusValue.isBlank()) {
-            throw new BadRequestException("Status is required");
-        }
-        ComplaintStatus status = ComplaintStatus.from(statusValue);
-        return ResponseEntity.ok(complaintService.updateComplaintStatus(id, status));
+        return ResponseEntity.ok(adminManagementService.updateComplaintStatus(id, request.getStatus(), principal.getName()));
+    }
+
+    // PUT /api/complaints/{id}/assign — assign complaint to officer/admin
+    @PutMapping("/{id}/assign")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<ComplaintResponse> assignComplaint(
+            @PathVariable UUID id,
+            @Valid @RequestBody ComplaintAssignRequest request,
+            Principal principal
+    ) {
+        AdminAssignRequest payload = new AdminAssignRequest();
+        payload.setAssignedTo(request.getAssignedTo());
+        return ResponseEntity.ok(adminManagementService.assignComplaint(id, payload, principal.getName()));
+    }
+
+    // POST /api/complaints/{id}/notes — add complaint note
+    @PostMapping("/{id}/notes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
+    public ResponseEntity<ComplaintNoteResponse> addComplaintNote(
+            @PathVariable UUID id,
+            @Valid @RequestBody ComplaintNoteRequest request,
+            Principal principal
+    ) {
+        return ResponseEntity.ok(adminManagementService.addNote(id, request, principal.getName()));
+    }
+
+    // GET /api/complaints/{id}/notes — list complaint notes
+    @GetMapping("/{id}/notes")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
+    public ResponseEntity<List<ComplaintNoteResponse>> getComplaintNotes(@PathVariable UUID id) {
+        return ResponseEntity.ok(adminManagementService.getNotes(id));
     }
 
     // PUT /api/complaints/status/{id} — legacy path
@@ -143,14 +189,15 @@ public class ComplaintController {
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<ComplaintResponse> updateComplaintStatusLegacy(
             @PathVariable UUID id,
-            @RequestBody java.util.Map<String, String> payload
+            @RequestBody java.util.Map<String, String> payload,
+            Principal principal
     ) {
         String statusValue = payload.get("status");
         if (statusValue == null || statusValue.isBlank()) {
             throw new BadRequestException("Status is required");
         }
         ComplaintStatus status = ComplaintStatus.from(statusValue);
-        return ResponseEntity.ok(complaintService.updateComplaintStatus(id, status));
+        return ResponseEntity.ok(adminManagementService.updateComplaintStatus(id, status, principal.getName()));
     }
 
     // DELETE /api/complaints/{id} — delete complaint (admin)

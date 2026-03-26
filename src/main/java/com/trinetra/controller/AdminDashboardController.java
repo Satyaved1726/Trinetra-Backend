@@ -54,13 +54,14 @@ public class AdminDashboardController {
     public ResponseEntity<AdminComplaintsPageResponse> getAllComplaints(
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "priority", required = false) String priority,
             @RequestParam(value = "search", required = false) String search,
             @RequestParam(value = "fromDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(value = "toDate", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(adminManagementService.getComplaints(status, category, search, fromDate, toDate, page, size));
+        return ResponseEntity.ok(adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size));
     }
 
     @PutMapping("/complaints/{id}/status")

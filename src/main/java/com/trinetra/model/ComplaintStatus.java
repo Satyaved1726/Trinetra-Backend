@@ -3,6 +3,7 @@ package com.trinetra.model;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.Arrays;
+import java.util.Map;
 
 public enum ComplaintStatus {
     SUBMITTED("Submitted"),
@@ -13,6 +14,13 @@ public enum ComplaintStatus {
     REJECTED("Rejected");
 
     private final String label;
+
+        private static final Map<ComplaintStatus, ComplaintStatus> NEXT_ALLOWED_STATUS = Map.of(
+            SUBMITTED, UNDER_REVIEW,
+            UNDER_REVIEW, INVESTIGATING,
+            INVESTIGATING, RESOLVED,
+            RESOLVED, REJECTED
+        );
 
     ComplaintStatus(String label) {
         this.label = label;
@@ -30,5 +38,12 @@ public enum ComplaintStatus {
                         || status.label.equalsIgnoreCase(value))
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Invalid complaint status: " + value));
+    }
+
+    public boolean canTransitionTo(ComplaintStatus next) {
+        if (next == null || this == next) {
+            return false;
+        }
+        return NEXT_ALLOWED_STATUS.get(this) == next;
     }
 }
