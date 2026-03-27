@@ -50,6 +50,7 @@ public class ComplaintService {
         boolean anonymous = Boolean.TRUE.equals(request.getIsAnonymous());
         ComplaintCategory complaintCategory = parseCategory(request.getCategory());
         ComplaintPriority complaintPriority = detectPriority(request.getDescription());
+        ComplaintStatus initialStatus = ComplaintStatus.UNDER_REVIEW;
         UUID submittedByUserId = null;
         String anonymousToken = null;
 
@@ -69,13 +70,13 @@ public class ComplaintService {
                 .description(request.getDescription().trim())
             .category(complaintCategory.name())
                 .priority(complaintPriority.name())
-                .status(ComplaintStatus.SUBMITTED.name())
+                .status(initialStatus.name())
                 .anonymous(anonymous)
                 .trackingId(generateTrackingId())
             .userId(submittedByUserId)
             .anonymousToken(anonymousToken)
                 .statusHistory(writeStatusHistory(List.of(ComplaintStatusHistoryEntry.builder()
-                        .status(ComplaintStatus.SUBMITTED.name())
+                        .status(initialStatus.name())
                         .changedBy(submittedByUserId == null ? "anonymous" : submittedByUserId.toString())
                         .changedAt(LocalDateTime.now())
                         .build())))

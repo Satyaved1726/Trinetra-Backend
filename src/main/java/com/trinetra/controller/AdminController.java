@@ -4,6 +4,9 @@ import com.trinetra.dto.AdminResponseRequest;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ReportResponse;
 import com.trinetra.dto.StatusUpdateRequest;
+import com.lowagie.text.Document;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfWriter;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.AdminService;
@@ -85,18 +88,20 @@ public class AdminController {
             List<ComplaintResponse> list = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
 
             response.setContentType("text/csv");
-            response.setHeader("Content-Disposition", "attachment; filename=complaints.csv");
+            response.setHeader("Content-Disposition", "attachment; filename=complaints_report.csv");
 
             PrintWriter writer = response.getWriter();
-            writer.println("ID,Title,Status,Category,Priority");
+            writer.println("Tracking ID,Title,Description,Category,Priority,Status,Date");
 
             for (ComplaintResponse c : list) {
                 writer.println(
-                        toCsv(c.getId()) + ","
+                        toCsv(c.getTrackingId()) + ","
                                 + toCsv(c.getTitle()) + ","
-                                + toCsv(c.getStatus()) + ","
+                                + toCsv(c.getDescription()) + ","
                                 + toCsv(c.getCategory()) + ","
-                                + toCsv(c.getPriority())
+                                + toCsv(c.getPriority()) + ","
+                                + toCsv(c.getStatus()) + ","
+                                + toCsv(c.getCreatedAt())
                 );
             }
 
@@ -106,6 +111,34 @@ public class AdminController {
             response.setContentType("application/json");
             response.getWriter().write("{\"data\":[],\"error\":\"" + Optional.ofNullable(e.getMessage()).orElse("Unexpected error") + "\"}");
         }
+    }
+
+    @GetMapping("/reports/export/pdf")
+    public void exportPDF(HttpServletResponse response) throws Exception {
+        List<ComplaintResponse> list = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
+
+        response.setContentType("application/pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=complaints_report.pdf");
+
+        Document document = new Document();
+        PdfWriter.getInstance(document, response.getOutputStream());
+
+        document.open();
+        document.add(new Paragraph("Complaint Report\n\n"));
+
+        for (ComplaintResponse c : list) {
+            document.add(new Paragraph(
+                    "ID: " + Optional.ofNullable(c.getTrackingId()).orElse("N/A")
+                            + "\nTitle: " + Optional.ofNullable(c.getTitle()).orElse("N/A")
+                            + "\nCategory: " + Optional.ofNullable(c.getCategory()).orElse(null)
+                            + "\nPriority: " + Optional.ofNullable(c.getPriority()).orElse(null)
+                            + "\nStatus: " + Optional.ofNullable(c.getStatus()).orElse(null)
+                            + "\nDate: " + Optional.ofNullable(c.getCreatedAt()).orElse(null)
+                            + "\n---------------------------\n"
+            ));
+        }
+
+        document.close();
     }
 
     private ComplaintStatus parseStatus(String value) {

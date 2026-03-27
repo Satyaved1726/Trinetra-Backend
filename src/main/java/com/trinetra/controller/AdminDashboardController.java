@@ -26,6 +26,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -81,10 +82,11 @@ public class AdminDashboardController {
     public ResponseEntity<?> getComplaintById(@PathVariable UUID id) {
         try {
             ComplaintResponse complaint = adminManagementService.getComplaintDetails(id);
-            return successResponse(complaint);
+            return ResponseEntity.ok(Map.of("data", complaint));
         } catch (Exception e) {
             e.printStackTrace();
-            return errorResponse(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")));
         }
     }
 
@@ -98,11 +100,12 @@ public class AdminDashboardController {
             String statusValue = Optional.ofNullable(body).map(payload -> payload.get("status")).orElse("");
             ComplaintStatus complaintStatus = ComplaintStatus.from(statusValue);
             String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
-            Object updated = adminManagementService.updateComplaintStatus(id, complaintStatus, actor);
-            return successResponse(updated);
+            adminManagementService.updateComplaintStatus(id, complaintStatus, actor);
+            return ResponseEntity.ok(Map.of("message", "updated"));
         } catch (Exception e) {
             e.printStackTrace();
-            return errorResponse(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")));
         }
     }
 

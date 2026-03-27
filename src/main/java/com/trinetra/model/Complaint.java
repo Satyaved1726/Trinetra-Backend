@@ -91,7 +91,7 @@ public class Complaint {
     @PrePersist
     void prePersist() {
         if (status == null) {
-            status = ComplaintStatus.SUBMITTED.name();
+            status = ComplaintStatus.UNDER_REVIEW.name();
         }
         if (priority == null || priority.isBlank()) {
             priority = ComplaintPriority.MEDIUM.name();
