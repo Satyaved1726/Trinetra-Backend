@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS complaint_comments (
     id uuid PRIMARY KEY,
     complaint_id uuid NOT NULL,
     user_id uuid NULL,
-    created_by varchar(120) NOT NULL,
     note text NOT NULL,
     created_at timestamp without time zone NOT NULL DEFAULT now(),
     CONSTRAINT fk_complaint_comments_complaint
@@ -25,29 +24,17 @@ CREATE TABLE IF NOT EXISTS complaint_comments (
 );
 
 ALTER TABLE complaint_comments
-    ADD COLUMN IF NOT EXISTS created_by varchar(120);
-
-ALTER TABLE complaint_comments
     ADD COLUMN IF NOT EXISTS note text;
 
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'complaint_comments' AND column_name = 'comment'
-    ) THEN
-        EXECUTE 'UPDATE complaint_comments SET note = comment WHERE note IS NULL';
-    END IF;
-END
-$$;
+ALTER TABLE complaint_comments
+    ADD COLUMN IF NOT EXISTS user_id uuid;
 
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id uuid PRIMARY KEY,
     complaint_id uuid NULL,
-    action_type varchar(60) NOT NULL,
-    action_details varchar(2000) NULL,
-    actor varchar(120) NOT NULL,
+    action_type varchar(100) NOT NULL,
+    action_details text NULL,
+    actor varchar(255) NOT NULL,
     created_at timestamp without time zone NOT NULL DEFAULT now()
 );
 

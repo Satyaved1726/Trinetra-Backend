@@ -222,29 +222,28 @@ public class AdminDashboardController {
             List<ComplaintResponse> complaints = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
             long total = complaints.size();
             long resolved = complaints.stream()
-                .filter(c -> ComplaintStatus.RESOLVED.equals(c.getStatus()))
+                .filter(c -> "RESOLVED".equals(c.getStatus()))
                 .count();
             long rejected = complaints.stream()
-                .filter(c -> ComplaintStatus.REJECTED.equals(c.getStatus()))
+                .filter(c -> "REJECTED".equals(c.getStatus()))
                 .count();
             long open = complaints.stream()
-                .filter(c -> ComplaintStatus.UNDER_REVIEW.equals(c.getStatus())
-                    || ComplaintStatus.INVESTIGATING.equals(c.getStatus()))
+                .filter(c -> "UNDER_REVIEW".equals(c.getStatus()) || "INVESTIGATING".equals(c.getStatus()))
                 .count();
 
             return ResponseEntity.ok(Map.of(
                     "total", total,
                     "resolved", resolved,
-                "rejected", rejected,
-                "open", open
+                    "rejected", rejected,
+                    "open", open
             ));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.ok(Map.of(
-                "total", 0,
-                "resolved", 0,
-                "rejected", 0,
-                "open", 0
+                    "total", 0,
+                    "resolved", 0,
+                    "rejected", 0,
+                    "open", 0
             ));
         }
     }

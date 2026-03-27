@@ -532,12 +532,16 @@ public class AdminManagementService {
         }
 
     private void writeAudit(UUID complaintId, String actionType, String actor, String details) {
-        AuditLog log = AuditLog.builder()
-                .complaintId(complaintId)
-                .actionType(actionType)
-                .actor(actor == null || actor.isBlank() ? "system" : actor)
-                .actionDetails(details)
-                .build();
-        auditLogRepository.save(log);
+        try {
+            AuditLog log = AuditLog.builder()
+                    .complaintId(complaintId)
+                    .actionType(actionType)
+                    .actor(actor == null || actor.isBlank() ? "system" : actor)
+                    .actionDetails(details)
+                    .build();
+            auditLogRepository.save(log);
+        } catch (Exception e) {
+            System.out.println("Audit log failed, skipping... " + e.getMessage());
+        }
     }
 }
