@@ -52,7 +52,7 @@ public class Complaint {
     private String description;
 
     @Column(nullable = false, length = 30)
-    private String status;
+    private String status = ComplaintStatus.UNDER_REVIEW.name();
 
     @Column(nullable = false, length = 20)
     private String priority;
@@ -90,7 +90,7 @@ public class Complaint {
 
     @PrePersist
     void prePersist() {
-        if (status == null) {
+        if (status == null || status.isBlank()) {
             status = ComplaintStatus.UNDER_REVIEW.name();
         }
         if (priority == null || priority.isBlank()) {

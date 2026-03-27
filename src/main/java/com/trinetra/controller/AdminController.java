@@ -4,9 +4,9 @@ import com.trinetra.dto.AdminResponseRequest;
 import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ReportResponse;
 import com.trinetra.dto.StatusUpdateRequest;
-import com.lowagie.text.Document;
-import com.lowagie.text.Paragraph;
-import com.lowagie.text.pdf.PdfWriter;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.pdf.PdfWriter;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.AdminService;
@@ -91,7 +91,7 @@ public class AdminController {
             response.setHeader("Content-Disposition", "attachment; filename=complaints_report.csv");
 
             PrintWriter writer = response.getWriter();
-            writer.println("Tracking ID,Title,Description,Category,Priority,Status,Date");
+            writer.println("Tracking ID,Title,Description,Category,Priority,Status,Created Date");
 
             for (ComplaintResponse c : list) {
                 writer.println(
@@ -124,7 +124,7 @@ public class AdminController {
         PdfWriter.getInstance(document, response.getOutputStream());
 
         document.open();
-        document.add(new Paragraph("Complaint Report\n\n"));
+        document.add(new Paragraph("TRINETRA Complaint Report\n\n"));
 
         for (ComplaintResponse c : list) {
             document.add(new Paragraph(

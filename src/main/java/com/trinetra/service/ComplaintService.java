@@ -82,6 +82,10 @@ public class ComplaintService {
                         .build())))
                 .build();
 
+                if (complaint.getStatus() == null || complaint.getStatus().isBlank()) {
+                    complaint.setStatus(ComplaintStatus.UNDER_REVIEW.name());
+                }
+
         Complaint saved = complaintRepository.save(complaint);
 
         List<EvidenceDTO> evidenceFiles = request.getEvidenceFiles();

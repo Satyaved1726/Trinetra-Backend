@@ -70,11 +70,12 @@ public class AdminDashboardController {
             @RequestParam(value = "size", defaultValue = "20") int size
     ) {
         try {
-            AdminComplaintsPageResponse complaints = adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size);
-            return successResponse(sanitizeComplaints(complaints));
+            List<ComplaintResponse> complaints = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
+            return ResponseEntity.ok(Map.of("data", complaints));
         } catch (Exception e) {
             e.printStackTrace();
-            return errorResponse(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")));
         }
     }
 
@@ -100,8 +101,11 @@ public class AdminDashboardController {
             String statusValue = Optional.ofNullable(body).map(payload -> payload.get("status")).orElse("");
             ComplaintStatus complaintStatus = ComplaintStatus.from(statusValue);
             String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
-            adminManagementService.updateComplaintStatus(id, complaintStatus, actor);
-            return ResponseEntity.ok(Map.of("message", "updated"));
+                ComplaintResponse updated = adminManagementService.updateComplaintStatus(id, complaintStatus, actor);
+                return ResponseEntity.ok(Map.of(
+                    "message", "Status updated",
+                    "data", updated
+                ));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -215,18 +219,33 @@ public class AdminDashboardController {
     @GetMapping("/analytics")
     public ResponseEntity<?> getAnalytics() {
         try {
-            AdminAnalyticsResponse analytics = sanitizeAnalytics(adminManagementService.getAnalytics());
-            long total = analytics.getTotalComplaints();
-            long resolved = analytics.getResolvedComplaints();
-            long pending = Math.max(0, total - resolved);
-            return successResponse(Map.of(
+            List<ComplaintResponse> complaints = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
+            long total = complaints.size();
+            long resolved = complaints.stream()
+                .filter(c -> ComplaintStatus.RESOLVED.equals(c.getStatus()))
+                .count();
+            long rejected = complaints.stream()
+                .filter(c -> ComplaintStatus.REJECTED.equals(c.getStatus()))
+                .count();
+            long open = complaints.stream()
+                .filter(c -> ComplaintStatus.UNDER_REVIEW.equals(c.getStatus())
+                    || ComplaintStatus.INVESTIGATING.equals(c.getStatus()))
+                .count();
+
+            return ResponseEntity.ok(Map.of(
                     "total", total,
                     "resolved", resolved,
-                    "pending", pending
+                "rejected", rejected,
+                "open", open
             ));
         } catch (Exception e) {
             e.printStackTrace();
-            return errorResponse(e);
+            return ResponseEntity.ok(Map.of(
+                "total", 0,
+                "resolved", 0,
+                "rejected", 0,
+                "open", 0
+            ));
         }
     }
 
