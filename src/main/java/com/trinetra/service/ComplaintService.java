@@ -49,7 +49,7 @@ public class ComplaintService {
     public ComplaintSubmissionResponse submitComplaint(ComplaintRequest request, String userEmail) {
         boolean anonymous = Boolean.TRUE.equals(request.getIsAnonymous());
         ComplaintCategory complaintCategory = parseCategory(request.getCategory());
-        ComplaintPriority complaintPriority = parsePriority(request.getPriority());
+        ComplaintPriority complaintPriority = detectPriority(request.getDescription());
         UUID submittedByUserId = null;
         String anonymousToken = null;
 
@@ -383,5 +383,20 @@ public class ComplaintService {
         } catch (IllegalArgumentException ex) {
             throw new BadRequestException(ex.getMessage());
         }
+    }
+
+    private ComplaintPriority detectPriority(String description) {
+        if (description == null || description.isBlank()) {
+            return ComplaintPriority.LOW;
+        }
+
+        String content = description.toLowerCase();
+        if (content.contains("urgent") || content.contains("violence")) {
+            return ComplaintPriority.HIGH;
+        }
+        if (content.contains("harassment") || content.contains("abuse")) {
+            return ComplaintPriority.MEDIUM;
+        }
+        return ComplaintPriority.LOW;
     }
 }

@@ -9,6 +9,7 @@ import com.trinetra.dto.AdminUsersPageResponse;
 import com.trinetra.dto.AuditLogResponse;
 import com.trinetra.dto.ComplaintNoteRequest;
 import com.trinetra.dto.ComplaintNoteResponse;
+import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintTimelineEventResponse;
 import com.trinetra.dto.StatusUpdateRequest;
 import com.trinetra.dto.UserBlockResponse;
@@ -76,15 +77,28 @@ public class AdminDashboardController {
         }
     }
 
+    @GetMapping("/complaints/{id}")
+    public ResponseEntity<?> getComplaintById(@PathVariable UUID id) {
+        try {
+            ComplaintResponse complaint = adminManagementService.getComplaintDetails(id);
+            return successResponse(complaint);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
+    }
+
     @PutMapping("/complaints/{id}/status")
     public ResponseEntity<?> updateComplaintStatus(
             @PathVariable UUID id,
-            @Valid @RequestBody StatusUpdateRequest request,
+            @RequestBody Map<String, String> body,
             Principal principal
     ) {
         try {
+            String statusValue = Optional.ofNullable(body).map(payload -> payload.get("status")).orElse("");
+            ComplaintStatus complaintStatus = ComplaintStatus.from(statusValue);
             String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
-            Object updated = adminManagementService.updateComplaintStatus(id, request.getStatus(), actor);
+            Object updated = adminManagementService.updateComplaintStatus(id, complaintStatus, actor);
             return successResponse(updated);
         } catch (Exception e) {
             e.printStackTrace();
@@ -199,7 +213,14 @@ public class AdminDashboardController {
     public ResponseEntity<?> getAnalytics() {
         try {
             AdminAnalyticsResponse analytics = sanitizeAnalytics(adminManagementService.getAnalytics());
-            return successResponse(analytics);
+            long total = analytics.getTotalComplaints();
+            long resolved = analytics.getResolvedComplaints();
+            long pending = Math.max(0, total - resolved);
+            return successResponse(Map.of(
+                    "total", total,
+                    "resolved", resolved,
+                    "pending", pending
+            ));
         } catch (Exception e) {
             e.printStackTrace();
             return errorResponse(e);

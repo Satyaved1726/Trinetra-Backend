@@ -1,12 +1,17 @@
 package com.trinetra.controller;
 
 import com.trinetra.dto.AdminResponseRequest;
+import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ReportResponse;
 import com.trinetra.dto.StatusUpdateRequest;
 import com.trinetra.exception.BadRequestException;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.AdminService;
+import com.trinetra.service.ComplaintService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final AdminService adminService;
+    private final ComplaintService complaintService;
 
     @GetMapping("/reports")
     public ResponseEntity<?> getReports(
@@ -73,6 +79,35 @@ public class AdminController {
         }
     }
 
+    @GetMapping("/reports/export/csv")
+    public void exportCSV(HttpServletResponse response) throws IOException {
+        try {
+            List<ComplaintResponse> list = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
+
+            response.setContentType("text/csv");
+            response.setHeader("Content-Disposition", "attachment; filename=complaints.csv");
+
+            PrintWriter writer = response.getWriter();
+            writer.println("ID,Title,Status,Category,Priority");
+
+            for (ComplaintResponse c : list) {
+                writer.println(
+                        toCsv(c.getId()) + ","
+                                + toCsv(c.getTitle()) + ","
+                                + toCsv(c.getStatus()) + ","
+                                + toCsv(c.getCategory()) + ","
+                                + toCsv(c.getPriority())
+                );
+            }
+
+            writer.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.setContentType("application/json");
+            response.getWriter().write("{\"data\":[],\"error\":\"" + Optional.ofNullable(e.getMessage()).orElse("Unexpected error") + "\"}");
+        }
+    }
+
     private ComplaintStatus parseStatus(String value) {
         if (value == null || value.isBlank()) {
             return null;
@@ -97,5 +132,11 @@ public class AdminController {
                 "data", List.of(),
                 "error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")
         ));
+    }
+
+    private String toCsv(Object value) {
+        String text = value == null ? "" : value.toString();
+        String escaped = text.replace("\"", "\"\"");
+        return "\"" + escaped + "\"";
     }
 }
