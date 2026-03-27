@@ -98,7 +98,6 @@ public class ComplaintController {
 
     // GET /api/complaints — list complaints with filters (admin/officer)
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
     public ResponseEntity<?> getAllComplaints(
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "category", required = false) String category,
@@ -134,7 +133,6 @@ public class ComplaintController {
 
     // GET /api/complaints/{id} — get single complaint by UUID
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER', 'EMPLOYEE')")
     public ResponseEntity<?> getComplaintById(@PathVariable UUID id) {
         try {
             ComplaintResponse complaint = adminManagementService.getComplaintDetails(id);
@@ -173,19 +171,16 @@ public class ComplaintController {
 
     // PUT /api/complaints/{id}/status — update status (admin)
     @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
-    public ResponseEntity<?> updateComplaintStatus(
-            @PathVariable UUID id,
-            @Valid @RequestBody StatusUpdateRequest request,
-            Principal principal
-    ) {
+        public ResponseEntity<?> updateComplaintStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
         try {
-            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
-            ComplaintResponse updated = adminManagementService.updateComplaintStatus(id, request.getStatus(), actor);
+            String statusValue = Optional.ofNullable(body).map(payload -> payload.get("status")).orElse("");
+            ComplaintStatus status = ComplaintStatus.from(statusValue);
+
+            ComplaintResponse updated = adminManagementService.updateComplaintStatus(id, status, "SYSTEM");
             Object safeData = updated != null ? updated : List.of();
             return ResponseEntity.ok(Map.of(
                     "data", safeData,
-                    "message", "success"
+                "message", "updated"
             ));
         } catch (Exception e) {
             e.printStackTrace();
