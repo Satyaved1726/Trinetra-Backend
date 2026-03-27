@@ -13,6 +13,7 @@ import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintTimelineEventResponse;
 import com.trinetra.dto.StatusUpdateRequest;
 import com.trinetra.dto.UserBlockResponse;
+import com.trinetra.model.AdminUser;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.AdminManagementService;
 import com.trinetra.service.ComplaintService;
@@ -76,6 +77,28 @@ public class AdminDashboardController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")));
+        }
+    }
+
+    @GetMapping("/admins")
+    public ResponseEntity<?> getAdmins() {
+        try {
+            List<AdminUser> admins = Optional.ofNullable(adminManagementService.getAdmins()).orElse(List.of());
+            return successResponse(admins);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
+    }
+
+    @GetMapping("/complaints/assigned/{admin}")
+    public ResponseEntity<?> getAssignedComplaints(@PathVariable String admin) {
+        try {
+            List<ComplaintResponse> complaints = Optional.ofNullable(adminManagementService.getAssignedComplaints(admin)).orElse(List.of());
+            return successResponse(complaints);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
         }
     }
 
@@ -158,6 +181,34 @@ public class AdminDashboardController {
 
     @GetMapping("/complaints/{id}/notes")
     public ResponseEntity<?> getNotes(@PathVariable UUID id) {
+        try {
+            List<ComplaintNoteResponse> notes = Optional.ofNullable(adminManagementService.getNotes(id)).orElse(List.of());
+            return successResponse(notes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
+    }
+
+    @PostMapping("/complaints/{id}/comments")
+    public ResponseEntity<?> addComment(
+            @PathVariable UUID id,
+            @RequestBody Map<String, String> body,
+            Principal principal
+    ) {
+        try {
+            String note = Optional.ofNullable(body).map(payload -> payload.get("note")).orElse("");
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            ComplaintNoteResponse saved = adminManagementService.addComment(id, note, actor);
+            return successResponse(saved);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
+    }
+
+    @GetMapping("/complaints/{id}/comments")
+    public ResponseEntity<?> getComments(@PathVariable UUID id) {
         try {
             List<ComplaintNoteResponse> notes = Optional.ofNullable(adminManagementService.getNotes(id)).orElse(List.of());
             return successResponse(notes);

@@ -16,6 +16,8 @@ public interface ComplaintRepository extends JpaRepository<Complaint, UUID>, Jpa
 
     List<Complaint> findByStatus(String status);
 
+    List<Complaint> findByAssignedToIgnoreCaseOrderByUpdatedAtDesc(String assignedTo);
+
     @Query("SELECT DISTINCT c FROM Complaint c LEFT JOIN FETCH c.evidenceFiles ORDER BY c.createdAt DESC")
     List<Complaint> findAllWithEvidence();
 

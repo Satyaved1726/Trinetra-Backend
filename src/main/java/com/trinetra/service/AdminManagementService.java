@@ -172,7 +172,7 @@ public class AdminManagementService {
                 String oldStatus = complaint.getStatus();
         complaint.setStatus(status.name());
                 appendStatusHistory(complaint, status, actor);
-        Complaint saved = complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.saveAndFlush(complaint);
 
         writeAudit(saved.getId(), "STATUS_UPDATED", actor, "Status changed from " + oldStatus + " to " + status.name());
 
@@ -203,12 +203,41 @@ public class AdminManagementService {
                 }
                 complaint.setAssignedTo(assignedTo);
 
-        Complaint saved = complaintRepository.save(complaint);
+        Complaint saved = complaintRepository.saveAndFlush(complaint);
 
                 writeAudit(saved.getId(), "ASSIGNED", actor, "Complaint assigned to " + assignedTo);
 
                 return toComplaintResponse(saved, saved.getEvidenceFiles() == null ? List.of() : saved.getEvidenceFiles(), List.of());
     }
+
+        @Transactional(readOnly = true)
+        public List<AdminUser> getAdmins() {
+                return adminUserRepository.findAll();
+        }
+
+        @Transactional(readOnly = true)
+        public List<ComplaintResponse> getAssignedComplaints(String assignedTo) {
+                if (assignedTo == null || assignedTo.isBlank()) {
+                        return List.of();
+                }
+
+                return complaintRepository.findByAssignedToIgnoreCaseOrderByUpdatedAtDesc(assignedTo.trim())
+                                .stream()
+                                .map(c -> toComplaintResponse(c, c.getEvidenceFiles() == null ? List.of() : c.getEvidenceFiles(), List.of()))
+                                .toList();
+        }
+
+        @Transactional
+        public ComplaintNoteResponse addComment(UUID complaintId, String note, String actor) {
+                if (note == null || note.isBlank()) {
+                        throw new BadRequestException("Note is required");
+                }
+
+                ComplaintNoteRequest request = new ComplaintNoteRequest();
+                request.setNote(note.trim());
+                request.setCreatedBy(actor);
+                return addNote(complaintId, request, actor);
+        }
 
     @Transactional(readOnly = true)
     public List<ComplaintTimelineEventResponse> getTimeline(UUID complaintId) {
