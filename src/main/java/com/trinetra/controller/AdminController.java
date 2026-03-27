@@ -9,6 +9,8 @@ import com.trinetra.service.AdminService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,27 +31,46 @@ public class AdminController {
     private final AdminService adminService;
 
     @GetMapping("/reports")
-    public ResponseEntity<List<ReportResponse>> getReports(
+    public ResponseEntity<?> getReports(
             @RequestParam(value = "status", required = false) String status
     ) {
-        return ResponseEntity.ok(adminService.getAllReports(parseStatus(status)));
+        try {
+            List<ReportResponse> reports = Optional.ofNullable(adminService.getAllReports(parseStatus(status))).orElse(List.of());
+            return successResponse(reports);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PutMapping("/report/{id}/status")
-    public ResponseEntity<ReportResponse> updateStatus(
+    public ResponseEntity<?> updateStatus(
             @PathVariable UUID id,
             @Valid @RequestBody StatusUpdateRequest request
     ) {
-        return ResponseEntity.ok(adminService.updateStatus(id, request));
+        try {
+            ReportResponse updated = adminService.updateStatus(id, request);
+            return successResponse(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PostMapping("/respond/{reportId}")
-    public ResponseEntity<ReportResponse> respond(
+    public ResponseEntity<?> respond(
             @PathVariable UUID reportId,
             @Valid @RequestBody AdminResponseRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(adminService.respondToReport(reportId, request, principal.getName()));
+        try {
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            ReportResponse response = adminService.respondToReport(reportId, request, actor);
+            return successResponse(response);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     private ComplaintStatus parseStatus(String value) {
@@ -61,5 +82,20 @@ public class AdminController {
         } catch (IllegalArgumentException ex) {
             throw new BadRequestException(ex.getMessage());
         }
+    }
+
+    private ResponseEntity<Map<String, Object>> successResponse(Object data) {
+        Object safeData = Optional.ofNullable(data).orElse(List.of());
+        return ResponseEntity.ok(Map.of(
+                "data", safeData,
+                "message", "success"
+        ));
+    }
+
+    private ResponseEntity<Map<String, Object>> errorResponse(Exception e) {
+        return ResponseEntity.ok(Map.of(
+                "data", List.of(),
+                "error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")
+        ));
     }
 }

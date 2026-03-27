@@ -12,7 +12,6 @@ import com.trinetra.dto.ComplaintNoteResponse;
 import com.trinetra.dto.ComplaintTimelineEventResponse;
 import com.trinetra.dto.StatusUpdateRequest;
 import com.trinetra.dto.UserBlockResponse;
-import com.trinetra.exception.BadRequestException;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.AdminManagementService;
 import com.trinetra.service.ComplaintService;
@@ -21,20 +20,21 @@ import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.format.annotation.DateTimeFormat;
 
 @RestController
 @RequestMapping({"/admin", "/api/admin"})
@@ -46,12 +46,18 @@ public class AdminDashboardController {
     private final AdminManagementService adminManagementService;
 
     @GetMapping("/stats")
-    public ResponseEntity<AdminStatsResponse> getStats() {
-        return ResponseEntity.ok(complaintService.getAdminStats());
+    public ResponseEntity<?> getStats() {
+        try {
+            AdminStatsResponse stats = sanitizeStats(complaintService.getAdminStats());
+            return successResponse(stats);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/complaints")
-    public ResponseEntity<AdminComplaintsPageResponse> getAllComplaints(
+    public ResponseEntity<?> getAllComplaints(
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "priority", required = false) String priority,
@@ -61,7 +67,13 @@ public class AdminDashboardController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size));
+        try {
+            AdminComplaintsPageResponse complaints = adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size);
+            return successResponse(sanitizeComplaints(complaints));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PutMapping("/complaints/{id}/status")
@@ -70,7 +82,14 @@ public class AdminDashboardController {
             @Valid @RequestBody StatusUpdateRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(adminManagementService.updateComplaintStatus(id, request.getStatus(), principal.getName()));
+        try {
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            Object updated = adminManagementService.updateComplaintStatus(id, request.getStatus(), actor);
+            return successResponse(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PutMapping("/complaints/{id}/assign")
@@ -79,64 +98,219 @@ public class AdminDashboardController {
             @RequestBody(required = false) AdminAssignRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(adminManagementService.assignComplaint(id, request, principal.getName()));
+        try {
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            Object assigned = adminManagementService.assignComplaint(id, request, actor);
+            return successResponse(assigned);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/complaints/{id}/timeline")
-    public ResponseEntity<List<ComplaintTimelineEventResponse>> getTimeline(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminManagementService.getTimeline(id));
+    public ResponseEntity<?> getTimeline(@PathVariable UUID id) {
+        try {
+            List<ComplaintTimelineEventResponse> timeline = Optional.ofNullable(adminManagementService.getTimeline(id)).orElse(List.of());
+            return successResponse(timeline);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PostMapping("/complaints/{id}/notes")
-    public ResponseEntity<ComplaintNoteResponse> addNote(
+    public ResponseEntity<?> addNote(
             @PathVariable UUID id,
             @Valid @RequestBody ComplaintNoteRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(adminManagementService.addNote(id, request, principal.getName()));
+        try {
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            ComplaintNoteResponse note = adminManagementService.addNote(id, request, actor);
+            return successResponse(note);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/complaints/{id}/notes")
-    public ResponseEntity<List<ComplaintNoteResponse>> getNotes(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminManagementService.getNotes(id));
+    public ResponseEntity<?> getNotes(@PathVariable UUID id) {
+        try {
+            List<ComplaintNoteResponse> notes = Optional.ofNullable(adminManagementService.getNotes(id)).orElse(List.of());
+            return successResponse(notes);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/notifications")
-    public ResponseEntity<List<AdminNotificationResponse>> getNotifications() {
-        return ResponseEntity.ok(adminManagementService.getNotifications());
+    public ResponseEntity<?> getNotifications() {
+        try {
+            List<AdminNotificationResponse> notifications = Optional.ofNullable(adminManagementService.getNotifications()).orElse(List.of());
+            return successResponse(notifications);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/users")
-    public ResponseEntity<AdminUsersPageResponse> getUsers() {
-        return ResponseEntity.ok(adminManagementService.getUsers());
+    public ResponseEntity<?> getUsers() {
+        try {
+            AdminUsersPageResponse users = sanitizeUsers(adminManagementService.getUsers());
+            return successResponse(users);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PutMapping("/users/{id}/block")
-    public ResponseEntity<UserBlockResponse> blockUser(@PathVariable UUID id, Principal principal) {
-        return ResponseEntity.ok(adminManagementService.blockUser(id, principal.getName()));
+    public ResponseEntity<?> blockUser(@PathVariable UUID id, Principal principal) {
+        try {
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            UserBlockResponse blocked = adminManagementService.blockUser(id, actor);
+            return successResponse(blocked);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/audit-logs")
-    public ResponseEntity<Page<AuditLogResponse>> getAuditLogs(
+    public ResponseEntity<?> getAuditLogs(
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(adminManagementService.getAuditLogs(page, size));
+        try {
+            Page<AuditLogResponse> logs = Optional.ofNullable(adminManagementService.getAuditLogs(page, size))
+                    .orElse(Page.empty());
+            return successResponse(logs);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @GetMapping("/analytics")
-    public ResponseEntity<AdminAnalyticsResponse> getAnalytics() {
-        return ResponseEntity.ok(adminManagementService.getAnalytics());
+    public ResponseEntity<?> getAnalytics() {
+        try {
+            AdminAnalyticsResponse analytics = sanitizeAnalytics(adminManagementService.getAnalytics());
+            return successResponse(analytics);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
+        }
     }
 
     @PutMapping("/complaints/status")
     public ResponseEntity<?> updateComplaintStatusLegacy(@RequestBody Map<String, String> payload, Principal principal) {
-        String id = payload.get("id");
-        String status = payload.get("status");
-        if (id == null || id.isBlank() || status == null || status.isBlank()) {
-            throw new BadRequestException("Both id and status are required");
+        try {
+            String id = Optional.ofNullable(payload).map(p -> p.get("id")).orElse("");
+            String status = Optional.ofNullable(payload).map(p -> p.get("status")).orElse("");
+            if (id.isBlank() || status.isBlank()) {
+                return errorResponse(new IllegalArgumentException("Both id and status are required"));
+            }
+
+            ComplaintStatus complaintStatus = ComplaintStatus.from(status);
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            Object updated = adminManagementService.updateComplaintStatus(UUID.fromString(id), complaintStatus, actor);
+            return successResponse(updated);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return errorResponse(e);
         }
-        ComplaintStatus complaintStatus = ComplaintStatus.from(status);
-        return ResponseEntity.ok(adminManagementService.updateComplaintStatus(UUID.fromString(id), complaintStatus, principal.getName()));
+    }
+
+    private AdminStatsResponse sanitizeStats(AdminStatsResponse response) {
+        if (response == null) {
+            return AdminStatsResponse.builder()
+                    .totalComplaints(0)
+                    .pendingComplaints(0)
+                    .resolvedComplaints(0)
+                    .rejectedComplaints(0)
+                    .build();
+        }
+
+        return AdminStatsResponse.builder()
+                .totalComplaints(Optional.ofNullable(response).map(AdminStatsResponse::getTotalComplaints).orElse(0L))
+                .pendingComplaints(Optional.ofNullable(response).map(AdminStatsResponse::getPendingComplaints).orElse(0L))
+                .resolvedComplaints(Optional.ofNullable(response).map(AdminStatsResponse::getResolvedComplaints).orElse(0L))
+                .rejectedComplaints(Optional.ofNullable(response).map(AdminStatsResponse::getRejectedComplaints).orElse(0L))
+                .build();
+    }
+
+    private AdminComplaintsPageResponse sanitizeComplaints(AdminComplaintsPageResponse response) {
+        if (response == null) {
+            return AdminComplaintsPageResponse.builder()
+                    .content(List.of())
+                    .page(0)
+                    .size(0)
+                    .totalPages(0)
+                    .totalElements(0)
+                    .build();
+        }
+
+        return AdminComplaintsPageResponse.builder()
+                .content(Optional.ofNullable(response.getContent()).orElse(List.of()))
+                .page(response.getPage())
+                .size(response.getSize())
+                .totalPages(response.getTotalPages())
+                .totalElements(response.getTotalElements())
+                .build();
+    }
+
+    private AdminUsersPageResponse sanitizeUsers(AdminUsersPageResponse response) {
+        if (response == null) {
+            return AdminUsersPageResponse.builder()
+                    .users(List.of())
+                    .build();
+        }
+
+        return AdminUsersPageResponse.builder()
+                .users(Optional.ofNullable(response.getUsers()).orElse(List.of()))
+                .build();
+    }
+
+    private AdminAnalyticsResponse sanitizeAnalytics(AdminAnalyticsResponse response) {
+        if (response == null) {
+            return AdminAnalyticsResponse.builder()
+                    .totalComplaints(0)
+                    .openComplaints(0)
+                    .resolvedComplaints(0)
+                    .anonymousComplaints(0)
+                    .complaintsByCategory(Map.of())
+                    .complaintsByStatus(Map.of())
+                    .complaintsOverTime(Map.of())
+                    .build();
+        }
+
+        return AdminAnalyticsResponse.builder()
+                .totalComplaints(response.getTotalComplaints())
+                .openComplaints(response.getOpenComplaints())
+                .resolvedComplaints(response.getResolvedComplaints())
+                .anonymousComplaints(response.getAnonymousComplaints())
+                .complaintsByCategory(Optional.ofNullable(response.getComplaintsByCategory()).orElse(Map.of()))
+                .complaintsByStatus(Optional.ofNullable(response.getComplaintsByStatus()).orElse(Map.of()))
+                .complaintsOverTime(Optional.ofNullable(response.getComplaintsOverTime()).orElse(Map.of()))
+                .build();
+    }
+
+    private ResponseEntity<Map<String, Object>> successResponse(Object data) {
+        Object safeData = Optional.ofNullable(data).orElse(List.of());
+        return ResponseEntity.ok(Map.of(
+                "data", safeData,
+                "message", "success"
+        ));
+    }
+
+    private ResponseEntity<Map<String, Object>> errorResponse(Exception e) {
+        return ResponseEntity.ok(Map.of(
+                "data", List.of(),
+                "error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")
+        ));
     }
 }
