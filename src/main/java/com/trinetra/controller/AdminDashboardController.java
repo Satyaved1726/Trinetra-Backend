@@ -291,12 +291,16 @@ public class AdminDashboardController {
             long open = complaints.stream()
                 .filter(c -> "UNDER_REVIEW".equals(c.getStatus()) || "INVESTIGATING".equals(c.getStatus()))
                 .count();
+            long anonymous = complaints.stream()
+                .filter(ComplaintResponse::isAnonymous)
+                .count();
 
             return ResponseEntity.ok(Map.of(
                     "total", total,
                     "resolved", resolved,
                     "rejected", rejected,
-                    "open", open
+                    "open", open,
+                    "anonymous", anonymous
             ));
         } catch (Exception e) {
             e.printStackTrace();
@@ -304,7 +308,8 @@ public class AdminDashboardController {
                     "total", 0,
                     "resolved", 0,
                     "rejected", 0,
-                    "open", 0
+                    "open", 0,
+                    "anonymous", 0
             ));
         }
     }

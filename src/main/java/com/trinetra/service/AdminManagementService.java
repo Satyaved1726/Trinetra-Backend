@@ -1,7 +1,5 @@
 package com.trinetra.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trinetra.dto.AdminAnalyticsResponse;
 import com.trinetra.dto.AdminAssignRequest;
 import com.trinetra.dto.AdminComplaintsPageResponse;
@@ -74,8 +72,7 @@ public class AdminManagementService {
     private final ComplaintCommentRepository complaintCommentRepository;
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
-    private final UserAccessControlRepository userAccessControlRepository;
-        private final ObjectMapper objectMapper;
+        private final UserAccessControlRepository userAccessControlRepository;
 
     @Transactional(readOnly = true)
     public AdminAnalyticsResponse getAnalytics() {
@@ -185,15 +182,21 @@ public class AdminManagementService {
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
                 String assignedTo = request == null ? null : request.getAssignedTo();
+                if ((assignedTo == null || assignedTo.isBlank()) && request != null && request.getAdmin() != null) {
+                        assignedTo = request.getAdmin();
+                }
                 AdminUser assignee = null;
 
-                if (assignedTo != null && !assignedTo.isBlank()) {
-                        assignedTo = assignedTo.trim();
-                        assignee = resolveAdminByIdentifier(assignedTo);
-                } else if (request != null && request.getAdminId() != null) {
+                if (request != null && request.getAdminId() != null) {
                         assignee = adminUserRepository.findById(request.getAdminId())
                                         .orElseThrow(() -> new ResourceNotFoundException("Admin not found"));
-                        assignedTo = assignee.getId().toString();
+                        assignedTo = assignee.getUsername();
+                } else if (assignedTo != null && !assignedTo.isBlank()) {
+                        assignedTo = assignedTo.trim();
+                        assignee = resolveAdminByIdentifier(assignedTo);
+                        if (assignee != null) {
+                                assignedTo = assignee.getUsername();
+                        }
                 } else {
                         throw new BadRequestException("assigned_to is required");
                 }
@@ -516,40 +519,46 @@ public class AdminManagementService {
                 .createdBy(complaint.getUserId())
                 .adminId(complaint.getAdmin() == null ? null : complaint.getAdmin().getId())
                 .evidenceFiles(evidenceFiles)
-                                .statusHistory(readStatusHistory(complaint.getStatusHistory()))
+                                .statusHistory(toHistoryEntries(complaint.getStatusHistory()))
                                 .notes(notes)
                 .build();
     }
 
         private void appendStatusHistory(Complaint complaint, ComplaintStatus nextStatus, String actor) {
-                List<ComplaintStatusHistoryEntry> history = readStatusHistory(complaint.getStatusHistory());
-                history.add(ComplaintStatusHistoryEntry.builder()
-                                .status(nextStatus.name())
-                                .changedBy(actor == null || actor.isBlank() ? "system" : actor)
-                                .changedAt(LocalDateTime.now())
-                                .build());
-                complaint.setStatusHistory(writeStatusHistory(history));
+                                List<Map<String, Object>> history = complaint.getStatusHistory() == null
+                                                ? new ArrayList<>()
+                                                : new ArrayList<>(complaint.getStatusHistory());
+                                Map<String, Object> entry = new HashMap<>();
+                                entry.put("status", nextStatus.name());
+                                entry.put("changedBy", actor == null || actor.isBlank() ? "system" : actor);
+                                entry.put("changedAt", LocalDateTime.now().toString());
+                                history.add(entry);
+                                complaint.setStatusHistory(history);
         }
 
-        private List<ComplaintStatusHistoryEntry> readStatusHistory(String rawJson) {
-                if (rawJson == null || rawJson.isBlank()) {
+                        private List<ComplaintStatusHistoryEntry> toHistoryEntries(List<Map<String, Object>> rawHistory) {
+                                if (rawHistory == null || rawHistory.isEmpty()) {
                         return new ArrayList<>();
                 }
-                try {
-                        return objectMapper.readValue(rawJson, new TypeReference<List<ComplaintStatusHistoryEntry>>() {
-                        });
-                } catch (Exception ex) {
-                        log.warn("Failed to parse complaint status history. Falling back to empty history. rawJson={}", rawJson, ex);
-                        return new ArrayList<>();
-                }
-        }
+                                return rawHistory.stream()
+                                                .map(item -> ComplaintStatusHistoryEntry.builder()
+                                                                .status(String.valueOf(item.getOrDefault("status", "")))
+                                                                .changedBy(String.valueOf(item.getOrDefault("changedBy", "system")))
+                                                                .changedAt(parseDateTime(item.get("changedAt")))
+                                                                .build())
+                                                .toList();
+                        }
 
-        private String writeStatusHistory(List<ComplaintStatusHistoryEntry> history) {
-                try {
-                        return objectMapper.writeValueAsString(history);
-                } catch (Exception ex) {
-                        throw new BadRequestException("Unable to persist status history");
-                }
+                        private LocalDateTime parseDateTime(Object value) {
+                                if (value == null) {
+                                        return LocalDateTime.now();
+                                }
+                                try {
+                                        return LocalDateTime.parse(String.valueOf(value));
+                                } catch (Exception ex) {
+                                        log.warn("Invalid changedAt value in status history: {}", value);
+                                        return LocalDateTime.now();
+                                }
         }
 
         private AdminUser resolveAdminByIdentifier(String assignedTo) {

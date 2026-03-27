@@ -1,7 +1,5 @@
 package com.trinetra.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trinetra.dto.AdminStatsResponse;
 import com.trinetra.dto.AdminAnalyticsResponse;
 import com.trinetra.dto.ComplaintRequest;
@@ -26,6 +24,7 @@ import com.trinetra.repository.EvidenceRepository;
 import com.trinetra.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -43,7 +42,6 @@ public class ComplaintService {
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
     private final EvidenceRepository evidenceRepository;
-    private final ObjectMapper objectMapper;
 
     @Transactional
     public ComplaintSubmissionResponse submitComplaint(ComplaintRequest request, String userEmail) {
@@ -75,11 +73,11 @@ public class ComplaintService {
                 .trackingId(generateTrackingId())
             .userId(submittedByUserId)
             .anonymousToken(anonymousToken)
-                .statusHistory(writeStatusHistory(List.of(ComplaintStatusHistoryEntry.builder()
-                        .status(initialStatus.name())
-                        .changedBy(submittedByUserId == null ? "anonymous" : submittedByUserId.toString())
-                        .changedAt(LocalDateTime.now())
-                        .build())))
+                .statusHistory(List.of(Map.of(
+                    "status", initialStatus.name(),
+                    "changedBy", submittedByUserId == null ? "anonymous" : submittedByUserId.toString(),
+                    "changedAt", LocalDateTime.now().toString()
+                )))
                 .build();
 
                 if (complaint.getStatus() == null || complaint.getStatus().isBlank()) {
@@ -306,39 +304,46 @@ public class ComplaintService {
                 .createdBy(complaint.getUserId())
                 .adminId(complaint.getAdmin() != null ? complaint.getAdmin().getId() : null)
                 .evidenceFiles(evidenceFiles)
-                .statusHistory(readStatusHistory(complaint.getStatusHistory()))
+                .statusHistory(toHistoryEntries(complaint.getStatusHistory()))
                 .notes(List.of())
                 .build();
     }
 
     private void appendStatusHistory(Complaint complaint, ComplaintStatus nextStatus, String actor) {
-        List<ComplaintStatusHistoryEntry> history = readStatusHistory(complaint.getStatusHistory());
-        history.add(ComplaintStatusHistoryEntry.builder()
-                .status(nextStatus.name())
-                .changedBy(actor == null || actor.isBlank() ? "system" : actor)
-                .changedAt(LocalDateTime.now())
-                .build());
-        complaint.setStatusHistory(writeStatusHistory(history));
+        List<Map<String, Object>> history = complaint.getStatusHistory() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(complaint.getStatusHistory());
+
+        Map<String, Object> entry = new HashMap<>();
+        entry.put("status", nextStatus.name());
+        entry.put("changedBy", actor == null || actor.isBlank() ? "system" : actor);
+        entry.put("changedAt", LocalDateTime.now().toString());
+        history.add(entry);
+        complaint.setStatusHistory(history);
     }
 
-    private List<ComplaintStatusHistoryEntry> readStatusHistory(String rawJson) {
-        if (rawJson == null || rawJson.isBlank()) {
+    private List<ComplaintStatusHistoryEntry> toHistoryEntries(List<Map<String, Object>> rawHistory) {
+        if (rawHistory == null || rawHistory.isEmpty()) {
             return new ArrayList<>();
         }
-        try {
-            return new ArrayList<>(objectMapper.readValue(rawJson, new TypeReference<List<ComplaintStatusHistoryEntry>>() {
-            }));
-        } catch (Exception ex) {
-            log.warn("Failed to parse complaint status history. rawJson={}", rawJson, ex);
-            return new ArrayList<>();
-        }
+        return rawHistory.stream()
+                .map(item -> ComplaintStatusHistoryEntry.builder()
+                        .status(String.valueOf(item.getOrDefault("status", "")))
+                        .changedBy(String.valueOf(item.getOrDefault("changedBy", "system")))
+                        .changedAt(parseDateTime(item.get("changedAt")))
+                        .build())
+                .toList();
     }
 
-    private String writeStatusHistory(List<ComplaintStatusHistoryEntry> history) {
+    private LocalDateTime parseDateTime(Object value) {
+        if (value == null) {
+            return LocalDateTime.now();
+        }
         try {
-            return objectMapper.writeValueAsString(history);
+            return LocalDateTime.parse(String.valueOf(value));
         } catch (Exception ex) {
-            throw new BadRequestException("Unable to persist status history");
+            log.warn("Invalid changedAt value in status history: {}", value);
+            return LocalDateTime.now();
         }
     }
 

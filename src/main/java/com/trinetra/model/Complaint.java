@@ -1,5 +1,6 @@
 package com.trinetra.model;
 
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -15,12 +16,14 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Type;
 import org.hibernate.annotations.UuidGenerator;
 
 @Getter
@@ -69,8 +72,10 @@ public class Complaint {
     @Column(name = "assigned_to", length = 120)
     private String assignedTo;
 
+    @Type(JsonBinaryType.class)
     @Column(name = "status_history", nullable = false, columnDefinition = "jsonb")
-    private String statusHistory = "[]";
+    @Builder.Default
+    private List<Map<String, Object>> statusHistory = new ArrayList<>();
 
     @Column(name = "evidence_url")
     private String evidenceUrl;
@@ -102,8 +107,8 @@ public class Complaint {
         if (updatedAt == null) {
             updatedAt = LocalDateTime.now();
         }
-        if (statusHistory == null || statusHistory.isBlank()) {
-            statusHistory = "[]";
+        if (statusHistory == null) {
+            statusHistory = new ArrayList<>();
         }
         if (trackingId == null || trackingId.isBlank()) {
             trackingId = "CMP-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();

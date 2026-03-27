@@ -12,7 +12,7 @@ ALTER TABLE complaints
 
 UPDATE complaints
 SET status_history = '[]'::jsonb
-WHERE status_history IS NULL;
+WHERE status_history IS NULL OR jsonb_typeof(status_history) = 'string';
 
 ALTER TABLE complaints
     ADD COLUMN IF NOT EXISTS updated_at timestamp without time zone NOT NULL DEFAULT now();
