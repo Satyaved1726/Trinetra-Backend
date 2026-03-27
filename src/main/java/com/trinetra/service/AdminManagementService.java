@@ -169,12 +169,7 @@ public class AdminManagementService {
         Complaint complaint = complaintRepository.findByIdWithEvidence(complaintId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
-                ComplaintStatus currentStatus = ComplaintStatus.from(complaint.getStatus());
-                if (!currentStatus.canTransitionTo(status)) {
-                        throw new BadRequestException("Invalid status transition: " + currentStatus.name() + " -> " + status.name());
-                }
-
-                String oldStatus = currentStatus.name();
+                String oldStatus = complaint.getStatus();
         complaint.setStatus(status.name());
                 appendStatusHistory(complaint, status, actor);
         Complaint saved = complaintRepository.save(complaint);
@@ -261,14 +256,13 @@ public class AdminManagementService {
         AdminUser admin = adminUserRepository.findByUsernameIgnoreCase(actor)
                 .orElse(null);
 
-        String createdBy = request.getCreatedBy() != null && !request.getCreatedBy().isBlank()
+        String authorName = request.getCreatedBy() != null && !request.getCreatedBy().isBlank()
                 ? request.getCreatedBy().trim()
                 : actor;
 
         ComplaintComment note = ComplaintComment.builder()
                 .complaint(complaint)
                 .userId(admin == null ? null : admin.getId())
-                .createdBy(createdBy)
                 .note(request.getNote().trim())
                 .build();
 
@@ -279,8 +273,8 @@ public class AdminManagementService {
                 .id(saved.getId())
                 .complaintId(complaintId)
                 .userId(saved.getUserId())
-                .author(admin == null ? createdBy : admin.getUsername())
-                .createdBy(saved.getCreatedBy())
+                .author(admin == null ? authorName : admin.getUsername())
+                .createdBy(admin == null ? authorName : admin.getUsername())
                 .note(saved.getNote())
                 .createdAt(saved.getCreatedAt())
                 .build();
@@ -303,8 +297,8 @@ public class AdminManagementService {
                         .id(note.getId())
                         .complaintId(note.getComplaint().getId())
                         .userId(note.getUserId())
-                        .author(authorMap.getOrDefault(note.getUserId(), note.getCreatedBy()))
-                        .createdBy(note.getCreatedBy())
+                        .author(authorMap.getOrDefault(note.getUserId(), "SYSTEM"))
+                        .createdBy(authorMap.getOrDefault(note.getUserId(), "SYSTEM"))
                         .note(note.getNote())
                         .createdAt(note.getCreatedAt())
                         .build())

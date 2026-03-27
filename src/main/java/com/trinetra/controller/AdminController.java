@@ -5,6 +5,7 @@ import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ReportResponse;
 import com.trinetra.dto.StatusUpdateRequest;
 import com.itextpdf.text.Document;
+import com.itextpdf.text.Font;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PdfWriter;
 import com.trinetra.exception.BadRequestException;
@@ -88,16 +89,15 @@ public class AdminController {
             List<ComplaintResponse> list = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
 
             response.setContentType("text/csv");
-            response.setHeader("Content-Disposition", "attachment; filename=complaints_report.csv");
+            response.setHeader("Content-Disposition", "attachment; filename=report.csv");
 
             PrintWriter writer = response.getWriter();
-            writer.println("Tracking ID,Title,Description,Category,Priority,Status,Created Date");
+            writer.println("ID,Title,Category,Priority,Status,Date");
 
             for (ComplaintResponse c : list) {
                 writer.println(
                         toCsv(c.getTrackingId()) + ","
                                 + toCsv(c.getTitle()) + ","
-                                + toCsv(c.getDescription()) + ","
                                 + toCsv(c.getCategory()) + ","
                                 + toCsv(c.getPriority()) + ","
                                 + toCsv(c.getStatus()) + ","
@@ -118,13 +118,17 @@ public class AdminController {
         List<ComplaintResponse> list = Optional.ofNullable(complaintService.getAllComplaints()).orElse(List.of());
 
         response.setContentType("application/pdf");
-        response.setHeader("Content-Disposition", "attachment; filename=complaints_report.pdf");
+        response.setHeader("Content-Disposition", "attachment; filename=TRINETRA_Report.pdf");
 
         Document document = new Document();
         PdfWriter.getInstance(document, response.getOutputStream());
 
         document.open();
-        document.add(new Paragraph("TRINETRA Complaint Report\n\n"));
+        Font titleFont = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD);
+        Font bodyFont = new Font(Font.FontFamily.HELVETICA, 10);
+
+        document.add(new Paragraph("TRINETRA Complaint Report", titleFont));
+        document.add(new Paragraph(" "));
 
         for (ComplaintResponse c : list) {
             document.add(new Paragraph(
@@ -134,7 +138,8 @@ public class AdminController {
                             + "\nPriority: " + Optional.ofNullable(c.getPriority()).orElse(null)
                             + "\nStatus: " + Optional.ofNullable(c.getStatus()).orElse(null)
                             + "\nDate: " + Optional.ofNullable(c.getCreatedAt()).orElse(null)
-                            + "\n---------------------------\n"
+                    + "\n--------------------------------------\n",
+                bodyFont
             ));
         }
 

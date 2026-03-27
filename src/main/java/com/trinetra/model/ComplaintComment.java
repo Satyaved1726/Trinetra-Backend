@@ -39,9 +39,6 @@ public class ComplaintComment {
     @Column(name = "user_id")
     private UUID userId;
 
-    @Column(name = "created_by", nullable = false, length = 120)
-    private String createdBy;
-
     @Column(name = "note", nullable = false, columnDefinition = "TEXT")
     private String note;
 

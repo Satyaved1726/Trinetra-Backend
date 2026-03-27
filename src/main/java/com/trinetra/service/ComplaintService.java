@@ -203,19 +203,6 @@ public class ComplaintService {
         Complaint complaint = complaintRepository.findById(complaintId)
                 .orElseThrow(() -> new ComplaintNotFoundException("Complaint not found"));
 
-        ComplaintStatus currentStatus = ComplaintStatus.from(complaint.getStatus());
-        if (!currentStatus.canTransitionTo(status)) {
-            log.warn(
-                    "Invalid complaint status transition requested. complaintId={}, currentStatus={}, requestedStatus={}",
-                    complaintId,
-                    currentStatus,
-                    status
-            );
-            throw new BadRequestException(
-                    "Invalid status transition: " + currentStatus.name() + " -> " + status.name()
-            );
-        }
-
         complaint.setStatus(status.name());
         appendStatusHistory(complaint, status, "system");
         return toResponse(complaintRepository.save(complaint));
