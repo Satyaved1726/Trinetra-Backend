@@ -17,6 +17,13 @@ WHERE status_history IS NULL OR jsonb_typeof(status_history) = 'string';
 ALTER TABLE complaints
     ADD COLUMN IF NOT EXISTS updated_at timestamp without time zone NOT NULL DEFAULT now();
 
+ALTER TABLE complaints
+    DROP CONSTRAINT IF EXISTS complaints_status_check;
+
+ALTER TABLE complaints
+    ADD CONSTRAINT complaints_status_check
+    CHECK (status IN ('SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'INVESTIGATING', 'RESOLVED', 'REJECTED'));
+
 CREATE TABLE IF NOT EXISTS complaint_comments (
     id uuid PRIMARY KEY,
     complaint_id uuid NOT NULL,

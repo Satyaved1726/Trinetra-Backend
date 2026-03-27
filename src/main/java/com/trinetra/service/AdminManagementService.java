@@ -168,6 +168,7 @@ public class AdminManagementService {
 
                 String oldStatus = complaint.getStatus();
         complaint.setStatus(status.name());
+                complaint.setUpdatedAt(LocalDateTime.now());
                 appendStatusHistory(complaint, status, actor);
         Complaint saved = complaintRepository.saveAndFlush(complaint);
 

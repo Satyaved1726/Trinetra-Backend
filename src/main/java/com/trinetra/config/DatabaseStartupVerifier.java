@@ -22,6 +22,8 @@ public class DatabaseStartupVerifier implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try (Connection connection = dataSource.getConnection()) {
+            ensureComplaintStatusConstraint(connection);
+
             String databaseName = connection.getCatalog() == null ? "postgres" : connection.getCatalog();
             String userName = connection.getMetaData().getUserName();
 
@@ -52,6 +54,28 @@ public class DatabaseStartupVerifier implements CommandLineRunner {
             log.info("=================================");
         } catch (SQLException ex) {
             log.error("TRINETRA DATABASE CONNECTION FAILED: {}", ex.getMessage(), ex);
+        }
+    }
+
+    private void ensureComplaintStatusConstraint(Connection connection) {
+        String dropConstraint = "ALTER TABLE complaints DROP CONSTRAINT IF EXISTS complaints_status_check";
+        String addConstraint = """
+                ALTER TABLE complaints
+                ADD CONSTRAINT complaints_status_check
+                CHECK (status IN ('SUBMITTED','PENDING','UNDER_REVIEW','INVESTIGATING','RESOLVED','REJECTED'))
+                """;
+
+        try (PreparedStatement drop = connection.prepareStatement(dropConstraint)) {
+            drop.execute();
+        } catch (SQLException ex) {
+            log.warn("Unable to drop complaints_status_check: {}", ex.getMessage());
+        }
+
+        try (PreparedStatement add = connection.prepareStatement(addConstraint)) {
+            add.execute();
+            log.info("complaints_status_check constraint verified/updated");
+        } catch (SQLException ex) {
+            log.warn("Unable to add complaints_status_check: {}", ex.getMessage());
         }
     }
 }
