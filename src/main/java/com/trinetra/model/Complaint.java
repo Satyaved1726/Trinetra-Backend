@@ -1,6 +1,5 @@
 package com.trinetra.model;
 
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
@@ -23,8 +22,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 @Getter
 @Setter
@@ -72,7 +72,7 @@ public class Complaint {
     @Column(name = "assigned_to", length = 120)
     private String assignedTo;
 
-    @Type(JsonBinaryType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "status_history", nullable = false, columnDefinition = "jsonb")
     @Builder.Default
     private List<Map<String, Object>> statusHistory = new ArrayList<>();
