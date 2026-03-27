@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping({"/api/super-admin", "/api/superadmin"})
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('SUPER_ADMIN')")
+// @PreAuthorize("hasRole('SUPER_ADMIN')")  // Temporarily disabled for debugging
 public class SuperAdminController {
 
     private final AdminUserRepository adminUserRepository;

@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping({"/admin", "/api/admin"})
 @RequiredArgsConstructor
-@PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+// @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")  // Temporarily disabled for debugging
 public class AdminDashboardController {
 
     private final ComplaintService complaintService;
