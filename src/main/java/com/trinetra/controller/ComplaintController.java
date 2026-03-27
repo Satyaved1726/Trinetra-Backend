@@ -18,6 +18,7 @@ import com.trinetra.service.ComplaintService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -98,7 +99,7 @@ public class ComplaintController {
     // GET /api/complaints — list complaints with filters (admin/officer)
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
-    public ResponseEntity<AdminComplaintsPageResponse> getAllComplaints(
+    public ResponseEntity<?> getAllComplaints(
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "priority", required = false) String priority,
@@ -108,7 +109,20 @@ public class ComplaintController {
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size
     ) {
-        return ResponseEntity.ok(adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size));
+        try {
+            AdminComplaintsPageResponse complaints = adminManagementService.getComplaints(status, category, priority, search, fromDate, toDate, page, size);
+            Object safeData = complaints != null ? complaints : List.of();
+            return ResponseEntity.ok(Map.of(
+                    "data", safeData,
+                    "message", "success"
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.ok(Map.of(
+                    "data", List.of(),
+                    "error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")
+            ));
+        }
     }
 
     // GET /api/complaints/all — list all complaints (admin, legacy path)
@@ -121,8 +135,21 @@ public class ComplaintController {
     // GET /api/complaints/{id} — get single complaint by UUID
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER', 'EMPLOYEE')")
-    public ResponseEntity<ComplaintResponse> getComplaintById(@PathVariable UUID id) {
-        return ResponseEntity.ok(adminManagementService.getComplaintDetails(id));
+    public ResponseEntity<?> getComplaintById(@PathVariable UUID id) {
+        try {
+            ComplaintResponse complaint = adminManagementService.getComplaintDetails(id);
+            Object safeData = complaint != null ? complaint : Map.of();
+            return ResponseEntity.ok(Map.of(
+                    "data", safeData,
+                    "message", "success"
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            Map<String, Object> errorBody = new LinkedHashMap<>();
+            errorBody.put("data", null);
+            errorBody.put("error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error"));
+            return ResponseEntity.ok(errorBody);
+        }
     }
 
     // GET /api/complaints/track/{trackingId} — public tracking
@@ -155,8 +182,9 @@ public class ComplaintController {
         try {
             String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
             ComplaintResponse updated = adminManagementService.updateComplaintStatus(id, request.getStatus(), actor);
+            Object safeData = updated != null ? updated : List.of();
             return ResponseEntity.ok(Map.of(
-                    "data", Optional.ofNullable(updated).orElse(List.of()),
+                    "data", safeData,
                     "message", "success"
             ));
         } catch (Exception e) {
