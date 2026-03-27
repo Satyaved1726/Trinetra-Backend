@@ -70,7 +70,7 @@ public class Complaint {
     private String assignedTo;
 
     @Column(name = "status_history", nullable = false, columnDefinition = "jsonb")
-    private String statusHistory;
+    private String statusHistory = "[]";
 
     @Column(name = "evidence_url")
     private String evidenceUrl;

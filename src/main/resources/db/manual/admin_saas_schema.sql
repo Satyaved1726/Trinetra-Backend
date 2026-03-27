@@ -10,6 +10,10 @@ ALTER TABLE complaints
 ALTER TABLE complaints
     ADD COLUMN IF NOT EXISTS status_history jsonb NOT NULL DEFAULT '[]'::jsonb;
 
+UPDATE complaints
+SET status_history = '[]'::jsonb
+WHERE status_history IS NULL;
+
 ALTER TABLE complaints
     ADD COLUMN IF NOT EXISTS updated_at timestamp without time zone NOT NULL DEFAULT now();
 

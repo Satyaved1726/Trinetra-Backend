@@ -13,6 +13,7 @@ import com.trinetra.dto.ComplaintResponse;
 import com.trinetra.dto.ComplaintTimelineEventResponse;
 import com.trinetra.dto.StatusUpdateRequest;
 import com.trinetra.dto.UserBlockResponse;
+import com.trinetra.exception.ComplaintNotFoundException;
 import com.trinetra.model.AdminUser;
 import com.trinetra.model.ComplaintStatus;
 import com.trinetra.service.AdminManagementService;
@@ -107,6 +108,9 @@ public class AdminDashboardController {
         try {
             ComplaintResponse complaint = adminManagementService.getComplaintDetails(id);
             return ResponseEntity.ok(Map.of("data", complaint));
+        } catch (ComplaintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Complaint not found")));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -129,6 +133,12 @@ public class AdminDashboardController {
                     "message", "Status updated",
                     "data", updated
                 ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Invalid status")));
+        } catch (ComplaintNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", Optional.ofNullable(e.getMessage()).orElse("Complaint not found")));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
