@@ -19,6 +19,8 @@ import jakarta.validation.Valid;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -145,12 +147,25 @@ public class ComplaintController {
     // PUT /api/complaints/{id}/status — update status (admin)
     @PutMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'OFFICER')")
-    public ResponseEntity<ComplaintResponse> updateComplaintStatus(
+    public ResponseEntity<?> updateComplaintStatus(
             @PathVariable UUID id,
             @Valid @RequestBody StatusUpdateRequest request,
             Principal principal
     ) {
-        return ResponseEntity.ok(adminManagementService.updateComplaintStatus(id, request.getStatus(), principal.getName()));
+        try {
+            String actor = Optional.ofNullable(principal).map(Principal::getName).orElse("SYSTEM");
+            ComplaintResponse updated = adminManagementService.updateComplaintStatus(id, request.getStatus(), actor);
+            return ResponseEntity.ok(Map.of(
+                    "data", Optional.ofNullable(updated).orElse(List.of()),
+                    "message", "success"
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.ok(Map.of(
+                    "data", List.of(),
+                    "error", Optional.ofNullable(e.getMessage()).orElse("Unexpected error")
+            ));
+        }
     }
 
     // PUT /api/complaints/{id}/assign — assign complaint to officer/admin
