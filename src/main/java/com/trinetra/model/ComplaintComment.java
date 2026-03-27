@@ -39,10 +39,10 @@ public class ComplaintComment {
     @Column(name = "user_id")
     private UUID userId;
 
-    @Column(name = "note", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "comment", nullable = false, columnDefinition = "TEXT")
     private String note;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

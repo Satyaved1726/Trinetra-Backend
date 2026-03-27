@@ -17,14 +17,14 @@ CREATE TABLE IF NOT EXISTS complaint_comments (
     id uuid PRIMARY KEY,
     complaint_id uuid NOT NULL,
     user_id uuid NULL,
-    note text NOT NULL,
+    comment text NOT NULL,
     created_at timestamp without time zone NOT NULL DEFAULT now(),
     CONSTRAINT fk_complaint_comments_complaint
         FOREIGN KEY (complaint_id) REFERENCES complaints(id) ON DELETE CASCADE
 );
 
 ALTER TABLE complaint_comments
-    ADD COLUMN IF NOT EXISTS note text;
+    ADD COLUMN IF NOT EXISTS comment text;
 
 ALTER TABLE complaint_comments
     ADD COLUMN IF NOT EXISTS user_id uuid;
